@@ -1,0 +1,991 @@
+<title>なんで開いたの？</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<style>
+  :root{
+    --bg:#ffffff;
+    --ink:#17171a;
+    --ink-2:#55565c;
+    --ink-3:#8e8f96;
+    --hairline:#e8e8ec;
+    --hairline-2:#f2f2f5;
+    --accent:#1c5cab;
+    --accent-soft:#eef4fc;
+    --r-hima:#2a78d6;
+    --r-tohi:#e34948;
+    --r-shirabe:#eda100;
+    --r-work:#008300;
+    --good:#006300;
+    /* animations.dev: 標準イージングは弱いのでカスタムカーブを使う */
+    --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer:cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--bg)}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    color:var(--ink);
+    font-size:16px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:520px;margin:0 auto;padding:0 24px calc(48px + env(safe-area-inset-bottom));min-height:100vh}
+
+  .eyebrow{
+    font-size:12px;letter-spacing:.14em;color:var(--ink-3);
+    font-weight:600;
+  }
+  h1{font-size:28px;font-weight:700;line-height:1.35;letter-spacing:-0.01em;text-wrap:balance;word-break:auto-phrase}
+  h2{font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--ink-3);margin-bottom:14px}
+
+  button{
+    font:inherit;color:inherit;background:none;border:none;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    /* apple-design: フィードバックはpointer-downの瞬間に。transformのみ遷移させる */
+    transition:transform 160ms var(--ease-out);
+  }
+  button:active{transform:scale(0.97)}
+  button:focus-visible,input:focus-visible,details summary:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;
+  }
+
+  /* ---- 入場アニメーション ----
+     頻度で強度を変える（animations.dev）:
+     問い詰め画面=毎日何十回→フェードのみ150ms / 選択後の画面=250msのrise */
+  .intercept{
+    opacity:1;
+    transition:opacity 150ms var(--ease-out);
+  }
+  @starting-style{
+    .intercept{opacity:0}
+  }
+  .screen-rise{
+    opacity:1;transform:translateY(0);
+    transition:opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+  }
+  @starting-style{
+    .screen-rise{opacity:0;transform:translateY(8px)}
+  }
+  main>section{
+    opacity:1;transform:translateY(0);
+    transition:opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
+  }
+  main>section:nth-of-type(2){transition-delay:40ms}
+  main>section:nth-of-type(3){transition-delay:80ms}
+  main>section:nth-of-type(4){transition-delay:120ms}
+  main>section:nth-of-type(5){transition-delay:160ms}
+  main>section:nth-of-type(6){transition-delay:200ms}
+  @starting-style{
+    main>section{opacity:0;transform:translateY(8px)}
+  }
+
+  /* ---- intercept ---- */
+  .intercept{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:48px 0;gap:0}
+  .intercept .eyebrow{margin-bottom:10px}
+  .intercept h1{margin-bottom:36px}
+  .choices{display:flex;flex-direction:column;gap:10px}
+  .choice{
+    display:flex;align-items:center;gap:14px;
+    width:100%;padding:16px 18px;text-align:left;
+    border:1px solid var(--hairline);border-radius:10px;
+    font-size:17px;font-weight:600;background:var(--bg);
+    transition:transform 160ms var(--ease-out), background 160ms var(--ease-out);
+  }
+  .choice:active{background:var(--hairline-2);transform:scale(0.98)}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .context-line{margin-top:28px;font-size:13px;color:var(--ink-3)}
+
+  /* ---- followup ---- */
+  .followup{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:48px 0}
+  .followup .reason-tag{
+    display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
+    color:var(--ink-2);margin-bottom:18px;
+  }
+  .followup h1{margin-bottom:14px}
+  .followup .sub{color:var(--ink-2);font-size:15px;margin-bottom:8px}
+  .followup .alt{color:var(--ink-3);font-size:13px}
+  .fu-actions{display:flex;flex-direction:column;gap:14px;margin-top:40px}
+  .btn-primary{
+    width:100%;padding:16px;border-radius:10px;
+    background:var(--accent);color:#fff;font-size:17px;font-weight:700;
+  }
+  .btn-primary:active{opacity:.85}
+  .btn-quiet{
+    width:100%;padding:10px;font-size:14px;color:var(--ink-3);
+    text-decoration:underline;text-underline-offset:3px;
+  }
+
+  /* ---- resist done ---- */
+  .done{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-height:100vh;padding:48px 0}
+  .done .big{font-size:56px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:20px}
+  .done h1{margin-bottom:12px}
+  .done p{color:var(--ink-2)}
+  .done .btn-quiet{text-align:left;padding:24px 0 0;width:auto}
+
+  /* ---- dashboard chrome ----
+     apple-design: ナビは半透明マテリアル。コンテンツが下を流れる */
+  .chrome-top{
+    position:sticky;top:0;z-index:10;
+    margin:0 -24px;padding:0 24px;
+    background:rgba(255,255,255,.72);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    backdrop-filter:blur(20px) saturate(180%);
+  }
+  @media (prefers-reduced-transparency: reduce){
+    .chrome-top{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+  }
+  header.top{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:20px 0 6px;
+  }
+  .brand{font-size:15px;font-weight:700}
+  .date{font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+  nav.tabs{display:flex;gap:20px;border-bottom:1px solid var(--hairline)}
+  nav.tabs button{
+    position:relative;
+    padding:10px 2px;font-size:14px;font-weight:600;color:var(--ink-3);
+    margin-bottom:-1px;border-radius:0;
+    transition:color 160ms var(--ease-out), transform 160ms var(--ease-out);
+  }
+  nav.tabs button[aria-selected="true"]{color:var(--ink)}
+  .tab-ink{
+    position:absolute;left:0;right:0;bottom:0;height:2px;
+    background:var(--accent);border-radius:2px 2px 0 0;
+    view-transition-name:tab-ink;
+  }
+  main{padding-top:28px}
+
+  /* View Transitions: タブ切替のクロスフェードを短く */
+  ::view-transition-old(root),
+  ::view-transition-new(root){animation-duration:180ms}
+  ::view-transition-old(tab-ink),
+  ::view-transition-new(tab-ink){animation-duration:220ms;animation-timing-function:var(--ease-out)}
+
+  section{margin-bottom:36px}
+
+  /* hero */
+  .hero-num{font-size:56px;font-weight:700;line-height:1.05;letter-spacing:-0.02em}
+  .hero-num .unit{font-size:20px;font-weight:600;color:var(--ink-2);margin-left:2px}
+  .hero-sub{font-size:14px;color:var(--ink-2);margin-top:6px}
+  .hero-sub .win{color:var(--good);font-weight:600}
+
+  /* could-have card */
+  .could{
+    border-left:2px solid var(--accent);
+    padding:4px 0 4px 16px;
+    font-size:15px;line-height:1.8;
+  }
+  .could em{font-style:normal;font-weight:700;color:var(--accent)}
+
+  /* breakdown */
+  .stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;background:var(--bg);margin-bottom:16px}
+  .stackbar .seg{height:100%}
+  .brk-row{
+    display:flex;align-items:center;gap:10px;padding:9px 0;
+    border-bottom:1px solid var(--hairline-2);font-size:14px;
+  }
+  .brk-row:last-child{border-bottom:none}
+  .brk-row .name{flex:1;font-weight:600}
+  .brk-row .val{color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+  /* trend */
+  .trend{display:flex;align-items:flex-end;gap:8px;height:96px;padding-top:8px}
+  .trend .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .trend .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;background:#9ec5f4;min-height:2px;border:none;padding:0;display:block}
+  .trend .bar.today{background:var(--accent)}
+  .trend .lbl{font-size:11px;color:var(--ink-3)}
+  .trend-caption{font-size:12px;color:var(--ink-2);margin-top:10px;min-height:1.5em;font-variant-numeric:tabular-nums}
+
+  .empty{
+    border:1px dashed var(--hairline);border-radius:12px;padding:28px 22px;
+    color:var(--ink-2);font-size:14px;line-height:1.9;
+  }
+  .empty .btn-primary{margin-top:16px}
+
+  /* per-app */
+  .app-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
+  .app-row:last-child{border-bottom:none}
+  .app-row .val{color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+  /* ---- settings ---- */
+  .set-card{border:1px solid var(--hairline);border-radius:12px;padding:18px;margin-bottom:14px}
+  .set-card .name-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .set-card .name-line strong{font-size:15px}
+  .del{font-size:12px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+  .field{margin-top:12px}
+  .field label{display:block;font-size:12px;color:var(--ink-3);letter-spacing:.06em;margin-bottom:4px}
+  input[type="text"],input[type="number"]{
+    width:100%;padding:10px 12px;font:inherit;font-size:15px;
+    border:1px solid var(--hairline);border-radius:8px;background:var(--bg);color:var(--ink);
+  }
+  input[type="number"]{font-variant-numeric:tabular-nums}
+  .copy-url{
+    margin-top:12px;width:100%;padding:11px;border:1px solid var(--accent);
+    color:var(--accent);border-radius:8px;font-size:14px;font-weight:600;background:var(--accent-soft);
+  }
+  .copy-url:active{opacity:.8}
+  .add-btn{
+    width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:12px;
+    color:var(--ink-2);font-size:14px;font-weight:600;
+  }
+  .minutes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .minutes-grid .cell label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  .conv-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .conv-row input[type="text"]{flex:1}
+  .conv-row input[type="number"]{width:74px;flex:none}
+  .conv-row .del{flex:none}
+  .hint{font-size:12.5px;color:var(--ink-3);line-height:1.8;margin-top:10px}
+  .danger{color:#c03535;text-decoration:underline;text-underline-offset:2px;font-size:13px}
+
+  details.setup{border:1px solid var(--hairline);border-radius:12px;padding:0 18px}
+  details.setup summary{
+    padding:16px 0;font-size:14px;font-weight:700;cursor:pointer;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  details.setup summary::after{content:"＋";color:var(--ink-3);font-weight:400}
+  details.setup[open] summary::after{content:"－"}
+  details.setup ol{padding:0 0 18px 20px;font-size:14px;color:var(--ink-2);line-height:2}
+  details.setup li b{color:var(--ink)}
+
+  .toast{
+    position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));
+    transform:translate(-50%, 8px) scale(0.97);
+    background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+    padding:9px 18px;border-radius:99px;opacity:0;pointer-events:none;
+    white-space:nowrap;
+    /* 退場は入場より速く */
+    transition:opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+  .toast.show{
+    opacity:1;transform:translate(-50%, 0) scale(1);
+    transition-duration:200ms;
+  }
+
+  /* ---- action sheet（全消去の確認モーダル） ---- */
+  .scrim{
+    position:fixed;inset:0;z-index:20;background:rgba(23,23,26,.4);
+    opacity:0;transition:opacity 200ms var(--ease-out);
+  }
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:21;
+    max-width:520px;margin:0 auto;
+    background:var(--bg);border-radius:16px 16px 0 0;
+    padding:24px 24px calc(20px + env(safe-area-inset-bottom));
+    transform:translateY(100%);
+    transition:transform 320ms var(--ease-drawer);
+  }
+  .sheet-open .scrim{opacity:1}
+  .sheet-open .sheet{transform:translateY(0)}
+  .sheet-closing .scrim{opacity:0;transition-duration:200ms}
+  .sheet-closing .sheet{transform:translateY(100%);transition-duration:240ms}
+  .sheet h3{font-size:17px;font-weight:700;margin-bottom:6px}
+  .sheet p{font-size:14px;color:var(--ink-2);margin-bottom:20px}
+  .sheet .btn-destructive{
+    width:100%;padding:15px;border-radius:10px;
+    background:#c03535;color:#fff;font-size:16px;font-weight:700;
+  }
+  .sheet .btn-cancel{
+    width:100%;padding:13px;margin-top:8px;
+    font-size:15px;font-weight:600;color:var(--ink-2);
+  }
+
+  /* reduced motion = ゼロではなく「揺れない」。opacityは残しtransformの移動を消す */
+  @media (prefers-reduced-motion: reduce){
+    .screen-rise, main>section{transition:opacity 150ms ease;transform:none}
+    .toast{transform:translate(-50%,0)}
+    .sheet{transition:opacity 200ms ease;transform:none;opacity:0}
+    .sheet-open .sheet{opacity:1}
+    button:active,.choice:active{transform:none;opacity:.7}
+  }
+</style>
+
+<div id="app"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* ================= data ================= */
+
+const REASONS = [
+  { id:"hima",    label:"暇つぶし",   color:"var(--r-hima)" },
+  { id:"tohi",    label:"逃避",       color:"var(--r-tohi)" },
+  { id:"shirabe", label:"調べもの",   color:"var(--r-shirabe)" },
+  { id:"work",    label:"勉強や仕事", color:"var(--r-work)" },
+];
+const R = Object.fromEntries(REASONS.map(r=>[r.id,r]));
+
+const DEFAULT_SETTINGS = {
+  apps: [
+    { id:"instagram", name:"Instagram", scheme:"instagram://" },
+    { id:"x",         name:"X",         scheme:"twitter://" },
+    { id:"tiktok",    name:"TikTok",    scheme:"tiktok://" },
+    { id:"youtube",   name:"YouTube",   scheme:"youtube://" },
+  ],
+  reasonMinutes: { hima:15, tohi:20, shirabe:5, work:10 },
+  graceMin: 5,
+  conversions: [
+    { name:"企業研究1社ぶん",        min:60 },
+    { name:"ESの設問1問の下書き",    min:40 },
+    { name:"駅まで歩いて外に出る",   min:30 },
+    { name:"SPI非言語10問",          min:20 },
+    { name:"湯船にゆっくり浸かる",   min:20 },
+    { name:"英単語30個",             min:15 },
+  ],
+};
+
+const LS = {
+  get(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  },
+  set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} },
+};
+
+let settings = Object.assign({}, DEFAULT_SETTINGS, LS.get("nh_settings", {}));
+settings.reasonMinutes = Object.assign({}, DEFAULT_SETTINGS.reasonMinutes, settings.reasonMinutes);
+let events = LS.get("nh_events", []);           // {t, app, reason, kind:"open"|"resist"}
+let lastAllowed = LS.get("nh_last", {});        // {appId: epoch ms}
+
+function saveSettings(){ LS.set("nh_settings", settings); }
+function saveEvents(){ LS.set("nh_events", events); }
+function saveLast(){ LS.set("nh_last", lastAllowed); }
+
+/* ================= helpers ================= */
+
+const $app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function dayKey(t){
+  const d = new Date(t);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+const todayKey = () => dayKey(Date.now());
+const WD = ["日","月","火","水","木","金","土"];
+
+function appName(id){
+  const a = settings.apps.find(a=>a.id===id);
+  return a ? a.name : id;
+}
+function estMinutes(evs){
+  return evs.reduce((s,e)=> s + (e.kind==="open" && e.reason ? (settings.reasonMinutes[e.reason]||0) : 0), 0);
+}
+function eventsOn(key){ return events.filter(e => dayKey(e.t) === key); }
+
+/* iOS風アクションシート。confirm()の置き換え */
+function showSheet({ title, message, confirmLabel, onConfirm }){
+  const wrap = document.createElement("div");
+  wrap.className = "sheet-wrap";
+  wrap.innerHTML = `
+    <div class="scrim"></div>
+    <div class="sheet" role="alertdialog" aria-modal="true" aria-label="${esc(title)}">
+      <h3>${esc(title)}</h3>
+      <p>${esc(message)}</p>
+      <button class="btn-destructive">${esc(confirmLabel)}</button>
+      <button class="btn-cancel">キャンセル</button>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const close = () => {
+    wrap.classList.remove("sheet-open");
+    wrap.classList.add("sheet-closing");
+    document.removeEventListener("keydown", onKey);
+    // 退場（240ms）が終わってから片付ける
+    setTimeout(()=> wrap.remove(), 280);
+  };
+  const onKey = e => { if(e.key === "Escape") close(); };
+
+  wrap.querySelector(".scrim").addEventListener("click", close);
+  wrap.querySelector(".btn-cancel").addEventListener("click", close);
+  wrap.querySelector(".btn-destructive").addEventListener("click", ()=>{ close(); onConfirm(); });
+  document.addEventListener("keydown", onKey);
+
+  // 挿入フレームの後にクラスを付けてtransitionを発火させる
+  requestAnimationFrame(()=> requestAnimationFrame(()=>{
+    wrap.classList.add("sheet-open");
+    wrap.querySelector(".btn-cancel").focus();
+  }));
+}
+
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=> el.classList.remove("show"), 1800);
+}
+
+/* ================= ショートカット記録の取り込み =================
+   かぶせ方式: ショートカットのメニューで答え、iCloudのファイルに
+   「日時, アプリ名, 理由」を1行ずつ追記 → クリップボード経由でここに取り込む */
+
+const REASON_LABELS = { "暇つぶし":"hima", "逃避":"tohi", "調べもの":"shirabe", "勉強や仕事":"work", "やめておく":"resist" };
+
+function mergeShortcutLog(text){
+  const existing = new Set(events.map(e => `${Math.floor(e.t/60000)}|${e.app}|${e.kind}|${e.reason||""}`));
+  let added = 0, bad = 0;
+  for(const raw of text.split(/\r?\n/)){
+    const line = raw.trim();
+    if(!line) continue;
+    const parts = line.split(/[\t,、]/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length < 3){ bad++; continue; }
+    const [dstr, appField, reasonLabel] = parts;
+    const t = Date.parse(dstr.replace(/\//g,"-").replace(" ","T"));
+    const rid = REASON_LABELS[reasonLabel];
+    if(!t || !rid){ bad++; continue; }
+    // アプリは名前かIDで照合。知らないアプリは設定に自動追加
+    let app = settings.apps.find(a => a.id === appField.toLowerCase() || a.name.toLowerCase() === appField.toLowerCase());
+    if(!app){
+      app = { id: appField.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "app"+Date.now(), name: appField, scheme:"" };
+      settings.apps.push(app); saveSettings();
+    }
+    const ev = rid === "resist"
+      ? { t, app: app.id, reason: null, kind: "resist" }
+      : { t, app: app.id, reason: rid, kind: "open" };
+    const key = `${Math.floor(t/60000)}|${ev.app}|${ev.kind}|${ev.reason||""}`;
+    if(existing.has(key)) continue;   // 同じファイルを再取り込みしても重複しない
+    existing.add(key);
+    events.push(ev); added++;
+  }
+  if(added){ events.sort((a,b)=>a.t-b.t); saveEvents(); }
+  return { added, bad };
+}
+
+async function importFromClipboard(){
+  let text = "";
+  try{
+    text = await navigator.clipboard.readText();
+  }catch(e){
+    text = window.prompt("記録をここにペーストして:") || "";
+  }
+  if(!text.trim()){ toast("クリップボードが空だった"); return; }
+  const { added, bad } = mergeShortcutLog(text);
+  if(added){ toast(`${added}件取り込んだ`); swap(renderDashboard); }
+  else if(bad){ toast("読める行がなかった。形式を確認して"); }
+  else{ toast("新しい記録はなかった"); }
+}
+
+/* 「本来なら」換算文 */
+function couldHaveText(totalMin){
+  const items = [...settings.conversions].sort((a,b)=>b.min-a.min).filter(c=>c.min>0);
+  let rest = totalMin;
+  const done = [];
+  for(const it of items){
+    if(done.length >= 2) break;
+    const n = Math.floor(rest / it.min);
+    if(n >= 1){
+      done.push(n > 1 ? `${it.name}を${n}回` : it.name);
+      rest -= n * it.min;
+    }
+  }
+  return done;
+}
+
+/* ================= intercept flow ================= */
+
+function renderIntercept(appId){
+  const name = appName(appId);
+  const todayEvs = eventsOn(todayKey()).filter(e=>e.app===appId);
+  const nth = todayEvs.filter(e=>e.kind==="open").length + 1;
+  const todayAll = eventsOn(todayKey());
+  const min = estMinutes(todayAll);
+  const ctx = nth === 1
+    ? "今日はじめての起動。"
+    : `今日${nth}回目。ここまでSNS全体で推定${min}分。`;
+
+  $app.innerHTML = `
+    <div class="intercept">
+      <p class="eyebrow">${esc(name.toUpperCase())} を開こうとしています</p>
+      <h1>なんで開いたの？</h1>
+      <div class="choices">
+        ${REASONS.map(r=>`
+          <button class="choice" data-reason="${r.id}">
+            <span class="dot" style="background:${r.color}"></span>${r.label}
+          </button>`).join("")}
+      </div>
+      <p class="context-line">${esc(ctx)}</p>
+    </div>`;
+
+  $app.querySelectorAll(".choice").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const reason = btn.dataset.reason;
+      // 先に「開いた」として記録。やめておくを選んだら resist に昇格する
+      events.push({ t: Date.now(), app: appId, reason, kind:"open" });
+      saveEvents();
+      renderFollowup(appId, reason);
+    });
+  });
+}
+
+const FU = {
+  hima: {
+    line: "暇なら、それは自由時間ってこと。",
+    sub:  "スクロールに払う？それとも自分に使う？",
+    stay: true,
+  },
+  tohi: {
+    line: "何から逃げてる？",
+    sub:  "開いても、それは消えないよ。",
+    stay: true,
+  },
+  shirabe: {
+    line: "OK、調べものだね。",
+    sub:  "目的のものだけ調べて、終わったら閉じよう。",
+    stay: false,
+  },
+  work: {
+    line: "了解、道具として使おう。",
+    sub:  "脱線しはじめたら、それは「暇つぶし」。",
+    stay: false,
+  },
+};
+
+function renderFollowup(appId, reason){
+  const fu = FU[reason];
+  const r = R[reason];
+  const m = settings.reasonMinutes[reason] || 0;
+  const alt = couldHaveText(m);
+  const altLine = (fu.stay && alt.length)
+    ? `いつもの1回ぶん（約${m}分）があれば、${alt.join("と")}ができる。` : "";
+
+  const openBtn  = `<button class="${fu.stay ? "btn-quiet" : "btn-primary"}" id="go">それでも開く</button>`;
+  const stayBtn  = `<button class="${fu.stay ? "btn-primary" : "btn-quiet"}" id="stay">やめておく</button>`;
+
+  $app.innerHTML = `
+    <div class="followup screen-rise">
+      <span class="reason-tag"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
+      <h1>${esc(fu.line)}</h1>
+      <p class="sub">${esc(fu.sub)}</p>
+      ${altLine ? `<p class="alt">${esc(altLine)}</p>` : ""}
+      <div class="fu-actions">
+        ${fu.stay ? stayBtn + openBtn : openBtn + stayBtn}
+      </div>
+    </div>`;
+
+  document.getElementById("go").addEventListener("click", ()=> allowAndOpen(appId));
+  document.getElementById("stay").addEventListener("click", ()=>{
+    const last = events[events.length-1];
+    if(last && last.app===appId && last.kind==="open") last.kind = "resist";
+    saveEvents();
+    renderResistDone();
+  });
+}
+
+function allowAndOpen(appId){
+  lastAllowed[appId] = Date.now();
+  saveLast();
+  const a = settings.apps.find(a=>a.id===appId);
+  if(a && a.scheme){
+    location.href = a.scheme;
+  }else{
+    $app.innerHTML = `<div class="done screen-rise"><h1>どうぞ。</h1><p>ホームに戻って${esc(appName(appId))}を開いてOK。${settings.graceMin}分間は引き止めない。</p></div>`;
+  }
+}
+
+function renderResistDone(){
+  const wins = eventsOn(todayKey()).filter(e=>e.kind==="resist").length;
+  $app.innerHTML = `
+    <div class="done screen-rise">
+      <div class="big">${wins}</div>
+      <h1>引き返した。今日${wins}回目のえらい。</h1>
+      <p>このままホーム画面に戻ろう。</p>
+      <button class="btn-quiet" id="to-dash">今日のまとめを見る →</button>
+    </div>`;
+  document.getElementById("to-dash").addEventListener("click", ()=>{
+    history.replaceState(null,"",location.pathname);
+    swap(renderDashboard);
+  });
+}
+
+/* ================= dashboard ================= */
+
+/* タブ切替はView Transitionsでクロスフェード＋下線スライド（未対応・reduced motionなら即時） */
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+function swap(renderFn){
+  if(document.startViewTransition && !reduceMotion.matches){
+    document.startViewTransition(renderFn);
+  }else{
+    renderFn();
+  }
+}
+
+function chrome(active, inner){
+  const d = new Date();
+  const tab = (id,label) => `
+    <button role="tab" aria-selected="${active===id}" data-tab="${id}">
+      ${label}${active===id ? '<span class="tab-ink"></span>' : ""}
+    </button>`;
+  $app.innerHTML = `
+    <div class="chrome-top">
+      <header class="top">
+        <span class="brand">なんで開いたの？</span>
+        <span class="date">${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）</span>
+      </header>
+      <nav class="tabs" role="tablist">
+        ${tab("today","今日")}${tab("settings","設定")}
+      </nav>
+    </div>
+    <main>${inner}</main>`;
+  $app.querySelectorAll("nav.tabs button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      if(b.dataset.tab === active) return;
+      swap(()=> b.dataset.tab==="today" ? renderDashboard() : renderSettings());
+    });
+  });
+}
+
+function renderDashboard(){
+  const evs = eventsOn(todayKey());
+  if(events.length === 0){ return renderEmpty(); }
+
+  const opens   = evs.filter(e=>e.kind==="open").length;
+  const resists = evs.filter(e=>e.kind==="resist").length;
+  const total   = estMinutes(evs);
+
+  /* 換算文 */
+  const could = couldHaveText(total);
+  const couldHtml = total < 5
+    ? `今日はまだほとんど時間を失っていない。<em>この調子。</em>`
+    : could.length
+      ? `この時間があれば、<em>${could.map(esc).join("</em>と<em>")}</em>ができました。`
+      : `この時間で、できたことがあったはず。`;
+
+  /* 理由別内訳 */
+  const byReason = REASONS.map(r=>{
+    const n = evs.filter(e=>e.kind==="open" && e.reason===r.id).length;
+    return { ...r, n, min: n * (settings.reasonMinutes[r.id]||0) };
+  });
+  const sumMin = byReason.reduce((s,b)=>s+b.min,0) || 1;
+  const segs = byReason.filter(b=>b.min>0);
+
+  /* アプリ別 */
+  const byApp = {};
+  evs.filter(e=>e.kind==="open").forEach(e=>{ byApp[e.app]=(byApp[e.app]||0)+1; });
+
+  /* 7日間 */
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const t = Date.now() - i*86400000;
+    const key = dayKey(t);
+    days.push({ key, wd: WD[new Date(t).getDay()], min: estMinutes(eventsOn(key)), today: i===0 });
+  }
+  const maxMin = Math.max(...days.map(d=>d.min), 30);
+
+  chrome("today", `
+    <section>
+      <div class="hero-num">${total}<span class="unit">分</span></div>
+      <p class="hero-sub">SNSに溶けた推定時間 ・ ${opens}回開いた${resists ? ` ・ <span class="win">${resists}回引き返した</span>` : ""}</p>
+    </section>
+
+    <section>
+      <div class="could">${couldHtml}</div>
+    </section>
+
+    ${segs.length ? `
+    <section>
+      <h2>理由別</h2>
+      <div class="stackbar" role="img" aria-label="理由別の内訳バー">
+        ${segs.map(b=>`<div class="seg" style="width:${(b.min/sumMin*100).toFixed(1)}%;background:${b.color}"></div>`).join("")}
+      </div>
+      ${byReason.filter(b=>b.n>0).map(b=>`
+        <div class="brk-row">
+          <span class="dot" style="background:${b.color}"></span>
+          <span class="name">${b.label}</span>
+          <span class="val">${b.n}回 ・ 推定${b.min}分</span>
+        </div>`).join("")}
+    </section>` : ""}
+
+    <section>
+      <h2>この7日間</h2>
+      <div class="trend">
+        ${days.map((d,i)=>`
+          <div class="col">
+            <button class="bar${d.today?" today":""}" data-i="${i}"
+              style="height:${Math.max(2, d.min/maxMin*100).toFixed(1)}%"
+              aria-label="${d.key} 推定${d.min}分"></button>
+            <span class="lbl">${d.today ? "今日" : d.wd}</span>
+          </div>`).join("")}
+      </div>
+      <p class="trend-caption" id="trend-cap">バーをタップすると分数が見える</p>
+    </section>
+
+    ${Object.keys(byApp).length ? `
+    <section>
+      <h2>アプリ別</h2>
+      ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`
+        <div class="app-row"><span>${esc(appName(id))}</span><span class="val">${n}回</span></div>`).join("")}
+    </section>` : ""}
+
+    <section>
+      <h2>ショートカットの記録</h2>
+      <button class="copy-url" id="import-btn">クリップボードから取り込む</button>
+      <p class="hint">かぶせ方式で記録している場合、「まとめを見る」ショートカットが記録をコピーした状態でここが開く。ボタンを押せば反映される。同じ記録を2回取り込んでも重複しない。</p>
+    </section>
+  `);
+
+  document.getElementById("import-btn").addEventListener("click", importFromClipboard);
+
+  $app.querySelectorAll(".trend .bar").forEach(bar=>{
+    bar.addEventListener("click", ()=>{
+      const d = days[Number(bar.dataset.i)];
+      const [,m,dd] = d.key.split("-");
+      document.getElementById("trend-cap").textContent =
+        `${Number(m)}/${Number(dd)}（${d.wd}）: ${d.min}分 ・ ${eventsOn(d.key).filter(e=>e.kind==="open").length}回`;
+    });
+  });
+}
+
+function renderEmpty(){
+  chrome("today", `
+    <section>
+      <div class="empty">
+        まだ記録がない。<br>
+        設定タブの手順どおりにiPhoneのショートカットを作ると、SNSを開くたびに問い詰められるようになる。<br>
+        <button class="btn-primary" id="demo">デモデータで画面を見てみる</button>
+        <button class="copy-url" id="import-btn" style="margin-top:10px">クリップボードから取り込む</button>
+      </div>
+    </section>`);
+  document.getElementById("import-btn").addEventListener("click", importFromClipboard);
+  document.getElementById("demo").addEventListener("click", ()=>{
+    const now = Date.now();
+    const mk = (dAgo, h, app, reason, kind) => {
+      const d = new Date(now - dAgo*86400000); d.setHours(h, Math.floor(Math.random()*59), 0, 0);
+      return { t:d.getTime(), app, reason, kind: kind||"open" };
+    };
+    events = [
+      mk(6,13,"instagram","hima"), mk(6,21,"x","tohi"),
+      mk(5,10,"x","shirabe"), mk(5,15,"instagram","hima"), mk(5,23,"tiktok","tohi"),
+      mk(4,12,"youtube","work"),
+      mk(3,9,"x","hima"), mk(3,14,"instagram","tohi"), mk(3,15,"instagram","hima"), mk(3,22,"tiktok","hima"),
+      mk(2,11,"x","shirabe"), mk(2,20,"instagram","hima"),
+      mk(1,10,"instagram","hima"), mk(1,13,"x","tohi"), mk(1,18,"youtube","hima"),
+      mk(0,9,"x","tohi"), mk(0,11,"instagram","hima"), mk(0,13,"instagram","hima"),
+      mk(0,14,"tiktok","tohi"), mk(0,15,"youtube","shirabe"), mk(0,16,"x","hima"),
+      mk(0,17,"instagram","tohi","resist"), mk(0,18,"x","hima","resist"),
+    ];
+    saveEvents();
+    toast("デモデータを入れた（設定から全消去できる）");
+    swap(renderDashboard);
+  });
+}
+
+/* ================= settings ================= */
+
+function interceptUrl(appId){
+  return location.origin + location.pathname + "?app=" + encodeURIComponent(appId);
+}
+
+function copyText(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast("コピーした"), ()=>window.prompt("手動でコピーして:", text));
+  }else{
+    window.prompt("手動でコピーして:", text);
+  }
+}
+
+function renderSettings(){
+  chrome("settings", `
+    <section>
+      <h2>監視するアプリ</h2>
+      <div id="apps">
+        ${settings.apps.map((a,i)=>`
+          <div class="set-card">
+            <div class="name-line">
+              <strong>${esc(a.name)}</strong>
+              <button class="del" data-del="${i}">削除</button>
+            </div>
+            <div class="field">
+              <label>アプリを再び開くためのURLスキーム</label>
+              <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
+            </div>
+            <button class="copy-url" data-copy="${i}">ショートカット用URLをコピー</button>
+          </div>`).join("")}
+      </div>
+      <button class="add-btn" id="add-app">＋ アプリを追加</button>
+      <p class="hint">コピーしたURLを、ショートカットのオートメーション「Appが開かれたとき→URLを開く」に貼る。下の手順を見て。</p>
+    </section>
+
+    <section>
+      <details class="setup">
+        <summary>かぶせ方式のセットアップ（おすすめ）</summary>
+        <p class="hint" style="margin:0 0 8px">Safariに飛ばず、SNSの画面の上に質問がシートでかぶさる方式。記録はiCloudのファイルに貯まり、まとめ画面にワンタップで取り込む。</p>
+        <ol>
+          <li><b>ショートカット</b>アプリ → <b>オートメーション</b>タブ → ＋ → <b>「Appが開かれたとき」</b> → 対象アプリ（例: X）→ <b>「すぐに実行」</b></li>
+          <li>アクション<b>「メニューから選択」</b>を追加。プロンプトに「なんで開いたの？」、選択肢を<b>暇つぶし / 逃避 / 調べもの / 勉強や仕事 / やめておく</b>の5つに</li>
+          <li>各選択肢の中に<b>「変数を設定」</b>（変数名: 理由、入力: その選択肢と同じ言葉のテキスト）</li>
+          <li>メニューの後ろに<b>「日付」</b>を追加し、フォーマットを<b>カスタム: yyyy-MM-dd HH:mm</b> に</li>
+          <li><b>「テキスト」</b>を追加し、内容を「<b>日付, X, 理由</b>」に（日付と理由は変数を挿入。アプリ名はそのまま書く）</li>
+          <li><b>「テキストをファイルに追加」</b>で、iCloud Drive/Shortcuts の <b>nazehiraita.txt</b> に追記（初回は自動で作られる）</li>
+          <li>監視したいアプリの数だけ繰り返す（2〜6は最初のオートメーションからコピーできる）</li>
+          <li>おまけ:「やめておく」の分岐に<b>「画面をロック」</b>を入れると、開いた瞬間ロックされる最強モードになる</li>
+        </ol>
+        <p class="hint" style="margin:0 0 8px"><b>「まとめを見る」ショートカット</b>（オートメーションではなく普通のショートカット）:</p>
+        <ol>
+          <li><b>「ファイルを取得」</b>で nazehiraita.txt を選ぶ</li>
+          <li><b>「クリップボードにコピー」</b></li>
+          <li><b>「URLを開く」</b>でこのページのURL（下でコピーできる）</li>
+          <li>開いたまとめ画面で「クリップボードから取り込む」をタップ</li>
+        </ol>
+        <button class="copy-url" id="copy-dash-url" style="margin-bottom:16px">まとめ画面のURLをコピー</button>
+      </details>
+    </section>
+
+    <section>
+      <details class="setup">
+        <summary>全画面方式のセットアップ（旧方式）</summary>
+        <p class="hint" style="margin:0 0 8px">SNSを開くとSafariに切り替わり、このアプリの問い詰め画面が全画面で出る方式。記録は自動で貯まるが、毎回画面が切り替わる。</p>
+        <ol>
+          <li><b>ショートカット</b>アプリ → <b>オートメーション</b>タブ → ＋</li>
+          <li><b>「Appが開かれたとき」</b> → 対象アプリ → <b>「すぐに実行」</b></li>
+          <li>アクション<b>「URLを開く」</b>に、上の「ショートカット用URL」を貼る</li>
+        </ol>
+      </details>
+    </section>
+
+    <section>
+      <h2>1回開いたら何分溶ける？</h2>
+      <div class="minutes-grid">
+        ${REASONS.map(r=>`
+          <div class="cell">
+            <label for="min-${r.id}"><span class="dot" style="background:${r.color}"></span>${r.label}</label>
+            <input type="number" id="min-${r.id}" data-rmin="${r.id}" value="${settings.reasonMinutes[r.id]}" min="0" max="180" inputmode="numeric">
+          </div>`).join("")}
+      </div>
+      <p class="hint">まとめ画面の推定時間はここから計算される。iPhoneの「スクリーンタイム」の実測と見比べて、自分の実態に合うまで調整しよう。ここが試行錯誤ポイント。</p>
+    </section>
+
+    <section>
+      <h2>引き止めない時間</h2>
+      <div class="field">
+        <label for="grace">「それでも開く」を選んだあと、再質問しない時間（分）</label>
+        <input type="number" id="grace" value="${settings.graceMin}" min="1" max="120" inputmode="numeric">
+      </div>
+      <p class="hint">短いほど厳しい。まず5分で運用して、うざすぎたら伸ばす。</p>
+    </section>
+
+    <section>
+      <h2>その時間でできたはずのこと</h2>
+      <div id="convs">
+        ${settings.conversions.map((c,i)=>`
+          <div class="conv-row">
+            <input type="text" data-cname="${i}" value="${esc(c.name)}">
+            <input type="number" data-cmin="${i}" value="${c.min}" min="1" max="600" inputmode="numeric" aria-label="所要分数">
+            <button class="del" data-cdel="${i}">削除</button>
+          </div>`).join("")}
+      </div>
+      <button class="add-btn" id="add-conv">＋ 項目を追加</button>
+      <p class="hint">まとめ画面の「本来なら」の文はここから作られる。分数が大きい順に当てはめる。</p>
+    </section>
+
+    <section>
+      <h2>データ</h2>
+      <p class="hint">記録はこの端末のブラウザ（localStorage）だけに保存される。どこにも送信されない。</p>
+      <p style="margin-top:10px;display:flex;gap:18px">
+        <button class="del" id="export">記録をJSONでコピー</button>
+        <button class="danger" id="wipe">全消去</button>
+      </p>
+    </section>
+  `);
+
+  /* apps */
+  $app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", ()=>{
+    settings.apps.splice(Number(b.dataset.del),1); saveSettings(); renderSettings();
+  }));
+  $app.querySelectorAll("[data-scheme]").forEach(inp=>inp.addEventListener("change", ()=>{
+    settings.apps[Number(inp.dataset.scheme)].scheme = inp.value.trim(); saveSettings();
+  }));
+  $app.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click", ()=>{
+    copyText(interceptUrl(settings.apps[Number(b.dataset.copy)].id));
+  }));
+  document.getElementById("add-app").addEventListener("click", e=>{
+    const form = document.createElement("div");
+    form.className = "set-card screen-rise";
+    form.innerHTML = `
+      <div class="field" style="margin-top:0">
+        <label>アプリ名（例: Instagram）</label>
+        <input type="text" id="new-app-name" autocomplete="off">
+      </div>
+      <button class="copy-url" id="new-app-save">追加する</button>`;
+    e.currentTarget.replaceWith(form);
+    const input = form.querySelector("#new-app-name");
+    input.focus();
+    form.querySelector("#new-app-save").addEventListener("click", ()=>{
+      const name = input.value.trim();
+      if(!name) { input.focus(); return; }
+      const id = name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "app"+Date.now();
+      settings.apps.push({ id, name, scheme:"" });
+      saveSettings(); renderSettings(); toast("追加した。URLスキームも入れてね");
+    });
+  });
+
+  document.getElementById("copy-dash-url").addEventListener("click", ()=>{
+    copyText(location.origin + location.pathname);
+  });
+
+  /* minutes & grace */
+  $app.querySelectorAll("[data-rmin]").forEach(inp=>inp.addEventListener("change", ()=>{
+    settings.reasonMinutes[inp.dataset.rmin] = Math.max(0, Number(inp.value)||0); saveSettings();
+  }));
+  document.getElementById("grace").addEventListener("change", e=>{
+    settings.graceMin = Math.max(1, Number(e.target.value)||5); saveSettings();
+  });
+
+  /* conversions */
+  $app.querySelectorAll("[data-cname]").forEach(inp=>inp.addEventListener("change", ()=>{
+    settings.conversions[Number(inp.dataset.cname)].name = inp.value.trim(); saveSettings();
+  }));
+  $app.querySelectorAll("[data-cmin]").forEach(inp=>inp.addEventListener("change", ()=>{
+    settings.conversions[Number(inp.dataset.cmin)].min = Math.max(1, Number(inp.value)||1); saveSettings();
+  }));
+  $app.querySelectorAll("[data-cdel]").forEach(b=>b.addEventListener("click", ()=>{
+    settings.conversions.splice(Number(b.dataset.cdel),1); saveSettings(); renderSettings();
+  }));
+  document.getElementById("add-conv").addEventListener("click", ()=>{
+    settings.conversions.push({ name:"新しい項目", min:30 });
+    saveSettings(); renderSettings();
+  });
+
+  /* data */
+  document.getElementById("export").addEventListener("click", ()=>{
+    copyText(JSON.stringify({ settings, events }, null, 2));
+  });
+  document.getElementById("wipe").addEventListener("click", ()=>{
+    showSheet({
+      title: "記録と設定を全部消す",
+      message: "元に戻せない。それでもいい？",
+      confirmLabel: "全部消す",
+      onConfirm(){
+        localStorage.removeItem("nh_events");
+        localStorage.removeItem("nh_settings");
+        localStorage.removeItem("nh_last");
+        settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        events = []; lastAllowed = {};
+        toast("全部消した");
+        swap(renderDashboard);
+      },
+    });
+  });
+}
+
+/* ================= router ================= */
+
+(function main(){
+  const p = new URLSearchParams(location.search);
+  const appId = p.get("app");
+  if(appId){
+    const allowed = lastAllowed[appId];
+    if(allowed && Date.now() - allowed < settings.graceMin * 60000){
+      // 猶予時間内: 問い詰めずにそのままアプリへ帰す
+      const a = settings.apps.find(a=>a.id===appId);
+      if(a && a.scheme){ location.replace(a.scheme); return; }
+    }
+    renderIntercept(appId);
+  }else{
+    renderDashboard();
+  }
+})();
+</script>
