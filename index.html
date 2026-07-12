@@ -3,6 +3,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='6' cy='10' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(-30 6 10)'/%3E%3Cellipse cx='26' cy='10' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(30 26 10)'/%3E%3Cellipse cx='6' cy='23' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(30 6 23)'/%3E%3Cellipse cx='26' cy='23' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(-30 26 23)'/%3E%3Cpath d='M16 29 L13.3 24.6 L18.7 24.6 Z' fill='%232f8f5b'/%3E%3Ccircle cx='16' cy='5.2' r='3.4' fill='%232f8f5b'/%3E%3Ccircle cx='14.8' cy='4.5' r='0.55' fill='%230b3d21'/%3E%3Ccircle cx='17.2' cy='4.5' r='0.55' fill='%230b3d21'/%3E%3Ccircle cx='16' cy='17' r='12' fill='%23146b3a'/%3E%3Ccircle cx='16' cy='17' r='9' fill='%23f2fbf6'/%3E%3Cg stroke='%2312321f' stroke-width='1.1' stroke-linecap='round'%3E%3Cline x1='16' y1='9.2' x2='16' y2='10.6'/%3E%3Cline x1='16' y1='23.4' x2='16' y2='24.8'/%3E%3Cline x1='8.2' y1='17' x2='9.6' y2='17'/%3E%3Cline x1='22.4' y1='17' x2='23.8' y2='17'/%3E%3C/g%3E%3Cline x1='16' y1='17' x2='16' y2='12' stroke='%2312321f' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='17' x2='19.4' y2='15.1' stroke='%2312321f' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='1' fill='%2312321f'/%3E%3C/svg%3E">
 
 <style>
   :root{
@@ -142,6 +143,8 @@
     display:flex;align-items:baseline;justify-content:space-between;
     padding:20px 0 6px;
   }
+  .brand-group{display:flex;align-items:center;gap:7px}
+  .brand-icon{flex:none;display:block}
   .brand{font-size:15px;font-weight:700}
   .date{font-size:12px;color:var(--ink-3);letter-spacing:.06em}
   nav.tabs{display:flex;gap:20px;border-bottom:1px solid var(--hairline)}
@@ -622,7 +625,30 @@ function chrome(active, inner){
   $app.innerHTML = `
     <div class="chrome-top">
       <header class="top">
-        <span class="brand">トガメ</span>
+        <span class="brand-group">
+          <svg class="brand-icon" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
+            <ellipse cx="6" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 6 10)"/>
+            <ellipse cx="26" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 26 10)"/>
+            <ellipse cx="6" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 6 23)"/>
+            <ellipse cx="26" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 26 23)"/>
+            <path d="M16 29 L13.3 24.6 L18.7 24.6 Z" fill="#2f8f5b"/>
+            <circle cx="16" cy="5.2" r="3.4" fill="#2f8f5b"/>
+            <circle cx="14.8" cy="4.5" r="0.55" fill="#0b3d21"/>
+            <circle cx="17.2" cy="4.5" r="0.55" fill="#0b3d21"/>
+            <circle cx="16" cy="17" r="12" fill="#146b3a"/>
+            <circle cx="16" cy="17" r="9" fill="#f2fbf6"/>
+            <g stroke="#12321f" stroke-width="1.1" stroke-linecap="round">
+              <line x1="16" y1="9.2" x2="16" y2="10.6"/>
+              <line x1="16" y1="23.4" x2="16" y2="24.8"/>
+              <line x1="8.2" y1="17" x2="9.6" y2="17"/>
+              <line x1="22.4" y1="17" x2="23.8" y2="17"/>
+            </g>
+            <line x1="16" y1="17" x2="16" y2="12" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="16" y1="17" x2="19.4" y2="15.1" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="16" cy="17" r="1" fill="#12321f"/>
+          </svg>
+          <span class="brand">トガメ</span>
+        </span>
         <span class="date">${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）</span>
       </header>
       <nav class="tabs" role="tablist">
