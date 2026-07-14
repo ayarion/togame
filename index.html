@@ -183,6 +183,14 @@
     font-size:15px;line-height:1.8;
   }
   .could em{font-style:normal;font-weight:700;color:var(--accent)}
+  .could .yen{display:block;margin-top:8px;font-size:13px;color:var(--ink-3);font-weight:600}
+
+  /* advice + quote */
+  .advice-line{font-size:14px;color:var(--ink-2);line-height:1.85;margin-bottom:16px}
+  .quote{border-left:2px solid var(--hairline);padding-left:14px}
+  .quote p{font-size:14px;color:var(--ink);line-height:1.85}
+  .quote cite{display:block;margin-top:5px;font-size:12px;color:var(--ink-3);font-style:normal}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--hairline-2);padding:1px 5px;border-radius:4px}
 
   /* breakdown */
   .stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;background:var(--bg);margin-bottom:16px}
@@ -332,12 +340,12 @@ const DEFAULT_SETTINGS = {
   reasonMinutes: { hima:15, tohi:20, shirabe:5, work:10 },
   graceMin: 5,
   conversions: [
-    { name:"企業研究1社ぶん",        min:60 },
-    { name:"ESの設問1問の下書き",    min:40 },
-    { name:"駅まで歩いて外に出る",   min:30 },
-    { name:"SPI非言語10問",          min:20 },
-    { name:"湯船にゆっくり浸かる",   min:20 },
-    { name:"英単語30個",             min:15 },
+    { name:"軽いアプリのプロトタイプを作る", min:60 },
+    { name:"筋トレ1セット",                   min:30 },
+    { name:"企業研究1社ぶん",                 min:30 },
+    { name:"資格の勉強を1単元",               min:20 },
+    { name:"SPIを10問",                       min:20 },
+    { name:"本を20ページ読む",                min:15 },
   ],
 };
 
@@ -422,54 +430,44 @@ function toast(msg){
   toast._t = setTimeout(()=> el.classList.remove("show"), 1800);
 }
 
-/* ================= ショートカット記録の取り込み =================
-   かぶせ方式: ショートカットのメニューで答え、iCloudのファイルに
-   「日時, アプリ名, 理由」を1行ずつ追記 → クリップボード経由でここに取り込む */
+/* ================= アドバイス＆名言 =================
+   すべて実在の著名な言葉のみ。出典付き。日付シードで日替わり表示 */
 
-const REASON_LABELS = { "暇つぶし":"hima", "逃避":"tohi", "調べもの":"shirabe", "勉強や仕事":"work", "やめておく":"resist" };
+const QUOTES = [
+  { t:"時は金なり。",                                                         by:"ベンジャミン・フランクリン" },
+  { t:"天才とは、1％のひらめきと99％の努力である。",                          by:"トーマス・エジソン" },
+  { t:"為せば成る、為さねば成らぬ何事も、成らぬは人の為さぬなりけり。",        by:"上杉鷹山" },
+  { t:"今日できることを明日に延ばすな。",                                     by:"トーマス・ジェファーソン" },
+  { t:"時間を浪費するな。人生はそれでできているのだから。",                   by:"ベンジャミン・フランクリン" },
+  { t:"小さいことを積み重ねることが、とんでもないところへ行くただ一つの道だ。", by:"イチロー" },
+  { t:"少年老い易く学成り難し、一寸の光陰軽んずべからず。",                    by:"朱熹" },
+  { t:"千里の道も一歩から。",                                                 by:"老子" },
+  { t:"精神一到、何事か成らざらん。",                                         by:"朱熹" },
+  { t:"やってみせ、言って聞かせて、させてみせ、褒めてやらねば人は動かじ。",    by:"山本五十六" },
+  { t:"ハングリーであれ。愚か者であれ。",                                     by:"スティーブ・ジョブズ" },
+  { t:"成功の秘訣は、好機が訪れたときに準備ができていることだ。",             by:"ベンジャミン・ディズレーリ" },
+];
 
-function mergeShortcutLog(text){
-  const existing = new Set(events.map(e => `${Math.floor(e.t/60000)}|${e.app}|${e.kind}|${e.reason||""}`));
-  let added = 0, bad = 0;
-  for(const raw of text.split(/\r?\n/)){
-    const line = raw.trim();
-    if(!line) continue;
-    const parts = line.split(/[\t,、]/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length < 3){ bad++; continue; }
-    const [dstr, appField, reasonLabel] = parts;
-    const t = Date.parse(dstr.replace(/\//g,"-").replace(" ","T"));
-    const rid = REASON_LABELS[reasonLabel];
-    if(!t || !rid){ bad++; continue; }
-    // アプリは名前かIDで照合。知らないアプリは設定に自動追加
-    let app = settings.apps.find(a => a.id === appField.toLowerCase() || a.name.toLowerCase() === appField.toLowerCase());
-    if(!app){
-      app = { id: appField.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "app"+Date.now(), name: appField, scheme:"" };
-      settings.apps.push(app); saveSettings();
-    }
-    const ev = rid === "resist"
-      ? { t, app: app.id, reason: null, kind: "resist" }
-      : { t, app: app.id, reason: rid, kind: "open" };
-    const key = `${Math.floor(t/60000)}|${ev.app}|${ev.kind}|${ev.reason||""}`;
-    if(existing.has(key)) continue;   // 同じファイルを再取り込みしても重複しない
-    existing.add(key);
-    events.push(ev); added++;
-  }
-  if(added){ events.sort((a,b)=>a.t-b.t); saveEvents(); }
-  return { added, bad };
+function quoteOfDay(){
+  const now = new Date();
+  const doy = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
+  return QUOTES[doy % QUOTES.length];
 }
 
-async function importFromClipboard(){
-  let text = "";
-  try{
-    text = await navigator.clipboard.readText();
-  }catch(e){
-    text = window.prompt("記録をここにペーストして:") || "";
-  }
-  if(!text.trim()){ toast("クリップボードが空だった"); return; }
-  const { added, bad } = mergeShortcutLog(text);
-  if(added){ toast(`${added}件取り込んだ`); swap(renderDashboard); }
-  else if(bad){ toast("読める行がなかった。形式を確認して"); }
-  else{ toast("新しい記録はなかった"); }
+function adviceFor(evs){
+  const opens = evs.filter(e=>e.kind==="open");
+  if(opens.length === 0) return "今日はまだ開いてない。いい一日のはじまり。";
+  const counts = {};
+  opens.forEach(e=>{ counts[e.reason]=(counts[e.reason]||0)+1; });
+  let top = null, max = 0;
+  for(const k in counts){ if(counts[k] > max){ max = counts[k]; top = k; } }
+  const map = {
+    hima:    "「暇つぶし」が一番多い日。その暇、5分でいいから自分のために使ってみない？",
+    tohi:    "「逃避」が多い日。しんどいことから逃げてるだけかも。まず一つだけ、手をつけてみよう。",
+    shirabe: "「調べもの」が多い日。目的を果たしたら、そのまま閉じるのを忘れずに。",
+    work:    "道具として使えてる日。この調子。脱線しはじめたら、気づけるように。",
+  };
+  return map[top] || "今日の自分を、そっと観察してみよう。";
 }
 
 /* 「本来なら」換算文 */
@@ -674,11 +672,16 @@ function renderDashboard(){
 
   /* 換算文 */
   const could = couldHaveText(total);
+  const yen = Math.floor(total * 1100 / 60);
   const couldHtml = total < 5
     ? `今日はまだほとんど時間を失っていない。<em>この調子。</em>`
-    : could.length
-      ? `この時間があれば、<em>${could.map(esc).join("</em>と<em>")}</em>ができました。`
-      : `この時間で、できたことがあったはず。`;
+    : (could.length
+        ? `この時間があれば、<em>${could.map(esc).join("</em>と<em>")}</em>ができました。`
+        : `この時間で、できたことがあったはず。`)
+      + `<span class="yen">時給1100円で換算すると、約${yen.toLocaleString()}円ぶん。</span>`;
+
+  /* アドバイス＆名言 */
+  const q = quoteOfDay();
 
   /* 理由別内訳 */
   const byReason = REASONS.map(r=>{
@@ -709,6 +712,16 @@ function renderDashboard(){
 
     <section>
       <div class="could">${couldHtml}</div>
+    </section>
+
+    <section>
+      <div class="advice">
+        <p class="advice-line">${esc(adviceFor(evs))}</p>
+        <blockquote class="quote">
+          <p>${esc(q.t)}</p>
+          <cite>— ${esc(q.by)}</cite>
+        </blockquote>
+      </div>
     </section>
 
     ${segs.length ? `
@@ -745,15 +758,7 @@ function renderDashboard(){
       ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`
         <div class="app-row"><span>${esc(appName(id))}</span><span class="val">${n}回</span></div>`).join("")}
     </section>` : ""}
-
-    <section>
-      <h2>ショートカットの記録</h2>
-      <button class="copy-url" id="import-btn">クリップボードから取り込む</button>
-      <p class="hint">かぶせ方式で記録している場合、「まとめを見る」ショートカットが記録をコピーした状態でここが開く。ボタンを押せば反映される。同じ記録を2回取り込んでも重複しない。</p>
-    </section>
   `);
-
-  document.getElementById("import-btn").addEventListener("click", importFromClipboard);
 
   $app.querySelectorAll(".trend .bar").forEach(bar=>{
     bar.addEventListener("click", ()=>{
@@ -770,12 +775,10 @@ function renderEmpty(){
     <section>
       <div class="empty">
         まだ記録がない。<br>
-        設定タブの手順どおりにiPhoneのショートカットを作ると、SNSを開くたびに問い詰められるようになる。<br>
+        設定タブで監視するアプリを登録して、iPhoneのショートカットを作ると、SNSを開くたびに問い詰められるようになる。<br>
         <button class="btn-primary" id="demo">デモデータで画面を見てみる</button>
-        <button class="copy-url" id="import-btn" style="margin-top:10px">クリップボードから取り込む</button>
       </div>
     </section>`);
-  document.getElementById("import-btn").addEventListener("click", importFromClipboard);
   document.getElementById("demo").addEventListener("click", ()=>{
     const now = Date.now();
     const mk = (dAgo, h, app, reason, kind) => {
@@ -817,6 +820,10 @@ function renderSettings(){
   chrome("settings", `
     <section>
       <h2>監視するアプリ</h2>
+      <p class="hint" style="margin:0 0 14px">
+        トガメが問い詰める相手を登録する。SNSを開いた瞬間にトガメへ飛ばすには、iPhoneの「ショートカット」アプリでオートメーションを作り、<b>「Appが開かれたとき → URLを開く」</b>に、このページ一番下の<b>ショートカット用URL</b>を貼る。<br>
+        下の<b>URLスキーム</b>は、問い詰めのあと元のSNSへ戻るための入口（例: <code>instagram://</code>）。アプリごとに違い、分からなければそのままでOK。
+      </p>
       <div id="apps">
         ${settings.apps.map((a,i)=>`
           <div class="set-card">
@@ -828,48 +835,9 @@ function renderSettings(){
               <label>アプリを再び開くためのURLスキーム</label>
               <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
             </div>
-            <button class="copy-url" data-copy="${i}">ショートカット用URLをコピー</button>
           </div>`).join("")}
       </div>
       <button class="add-btn" id="add-app">＋ アプリを追加</button>
-      <p class="hint">コピーしたURLを、ショートカットのオートメーション「Appが開かれたとき→URLを開く」に貼る。下の手順を見て。</p>
-    </section>
-
-    <section>
-      <details class="setup">
-        <summary>かぶせ方式のセットアップ（おすすめ）</summary>
-        <p class="hint" style="margin:0 0 8px">Safariに飛ばず、SNSの画面の上に質問がシートでかぶさる方式。記録はiCloudのファイルに貯まり、まとめ画面にワンタップで取り込む。</p>
-        <ol>
-          <li><b>ショートカット</b>アプリ → <b>オートメーション</b>タブ → ＋ → <b>「Appが開かれたとき」</b> → 対象アプリ（例: X）→ <b>「すぐに実行」</b></li>
-          <li>アクション<b>「メニューから選択」</b>を追加。プロンプトに「なんで開いたの？」、選択肢を<b>暇つぶし / 逃避 / 調べもの / 勉強や仕事 / やめておく</b>の5つに</li>
-          <li>各選択肢の中に<b>「変数を設定」</b>（変数名: 理由、入力: その選択肢と同じ言葉のテキスト）</li>
-          <li>メニューの後ろに<b>「日付」</b>を追加し、フォーマットを<b>カスタム: yyyy-MM-dd HH:mm</b> に</li>
-          <li><b>「テキスト」</b>を追加し、内容を「<b>日付, X, 理由</b>」に（日付と理由は変数を挿入。アプリ名はそのまま書く）</li>
-          <li><b>「テキストをファイルに追加」</b>で、iCloud Drive/Shortcuts の <b>togame.txt</b> に追記（初回は自動で作られる）</li>
-          <li>監視したいアプリの数だけ繰り返す（2〜6は最初のオートメーションからコピーできる）</li>
-          <li>おまけ:「やめておく」の分岐に<b>「画面をロック」</b>を入れると、開いた瞬間ロックされる最強モードになる</li>
-        </ol>
-        <p class="hint" style="margin:0 0 8px"><b>「まとめを見る」ショートカット</b>（オートメーションではなく普通のショートカット）:</p>
-        <ol>
-          <li><b>「ファイルを取得」</b>で togame.txt を選ぶ</li>
-          <li><b>「クリップボードにコピー」</b></li>
-          <li><b>「URLを開く」</b>でこのページのURL（下でコピーできる）</li>
-          <li>開いたまとめ画面で「クリップボードから取り込む」をタップ</li>
-        </ol>
-        <button class="copy-url" id="copy-dash-url" style="margin-bottom:16px">まとめ画面のURLをコピー</button>
-      </details>
-    </section>
-
-    <section>
-      <details class="setup">
-        <summary>全画面方式のセットアップ（旧方式）</summary>
-        <p class="hint" style="margin:0 0 8px">SNSを開くとSafariに切り替わり、このアプリの問い詰め画面が全画面で出る方式。記録は自動で貯まるが、毎回画面が切り替わる。</p>
-        <ol>
-          <li><b>ショートカット</b>アプリ → <b>オートメーション</b>タブ → ＋</li>
-          <li><b>「Appが開かれたとき」</b> → 対象アプリ → <b>「すぐに実行」</b></li>
-          <li>アクション<b>「URLを開く」</b>に、上の「ショートカット用URL」を貼る</li>
-        </ol>
-      </details>
     </section>
 
     <section>
@@ -881,7 +849,6 @@ function renderSettings(){
             <input type="number" id="min-${r.id}" data-rmin="${r.id}" value="${settings.reasonMinutes[r.id]}" min="0" max="180" inputmode="numeric">
           </div>`).join("")}
       </div>
-      <p class="hint">まとめ画面の推定時間はここから計算される。iPhoneの「スクリーンタイム」の実測と見比べて、自分の実態に合うまで調整しよう。ここが試行錯誤ポイント。</p>
     </section>
 
     <section>
@@ -890,7 +857,6 @@ function renderSettings(){
         <label for="grace">「それでも開く」を選んだあと、再質問しない時間（分）</label>
         <input type="number" id="grace" value="${settings.graceMin}" min="1" max="120" inputmode="numeric">
       </div>
-      <p class="hint">短いほど厳しい。まず5分で運用して、うざすぎたら伸ばす。</p>
     </section>
 
     <section>
@@ -904,16 +870,25 @@ function renderSettings(){
           </div>`).join("")}
       </div>
       <button class="add-btn" id="add-conv">＋ 項目を追加</button>
-      <p class="hint">まとめ画面の「本来なら」の文はここから作られる。分数が大きい順に当てはめる。</p>
     </section>
 
     <section>
       <h2>データ</h2>
-      <p class="hint">記録はこの端末のブラウザ（localStorage）だけに保存される。どこにも送信されない。</p>
-      <p style="margin-top:10px;display:flex;gap:18px">
-        <button class="del" id="export">記録をJSONでコピー</button>
+      <p style="display:flex;gap:18px">
+        <button class="del" id="export">エクスポート</button>
+        <button class="del" id="import">インポート</button>
         <button class="danger" id="wipe">全消去</button>
       </p>
+    </section>
+
+    <section>
+      <h2>ショートカット用URL</h2>
+      <p class="hint" style="margin:0 0 12px">下のURLを、各アプリのオートメーション「URLを開く」に貼る。</p>
+      ${settings.apps.map((a,i)=>`
+        <div class="set-card">
+          <div class="name-line"><strong>${esc(a.name)}</strong></div>
+          <button class="copy-url" data-copy="${i}">${esc(a.name)}用のURLをコピー</button>
+        </div>`).join("")}
     </section>
   `);
 
@@ -948,10 +923,6 @@ function renderSettings(){
     });
   });
 
-  document.getElementById("copy-dash-url").addEventListener("click", ()=>{
-    copyText(location.origin + location.pathname);
-  });
-
   /* minutes & grace */
   $app.querySelectorAll("[data-rmin]").forEach(inp=>inp.addEventListener("change", ()=>{
     settings.reasonMinutes[inp.dataset.rmin] = Math.max(0, Number(inp.value)||0); saveSettings();
@@ -979,6 +950,21 @@ function renderSettings(){
   document.getElementById("export").addEventListener("click", ()=>{
     copyText(JSON.stringify({ settings, events }, null, 2));
   });
+  document.getElementById("import").addEventListener("click", ()=>{
+    const text = window.prompt("エクスポートしたJSONを貼り付けて:");
+    if(!text) return;
+    let data;
+    try{ data = JSON.parse(text); }
+    catch(e){ toast("JSONが読めなかった"); return; }
+    if(data && data.settings){
+      settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+      settings.reasonMinutes = Object.assign({}, DEFAULT_SETTINGS.reasonMinutes, data.settings.reasonMinutes || {});
+      saveSettings();
+    }
+    if(data && Array.isArray(data.events)){ events = data.events; saveEvents(); }
+    toast("読み込んだ");
+    renderSettings();
+  });
   document.getElementById("wipe").addEventListener("click", ()=>{
     showSheet({
       title: "記録と設定を全部消す",
@@ -997,6 +983,22 @@ function renderSettings(){
   });
 }
 
+/* 猶予時間内の再訪問: 自動リダイレクトはしない（毎回iOSの確認ダイアログが
+   出て無限ループになるため）。静かな画面を出し、戻るのはユーザー操作に任せる */
+function renderGrace(appId){
+  const a = settings.apps.find(a=>a.id===appId);
+  const backBtn = (a && a.scheme)
+    ? `<button class="btn-quiet" id="back">${esc(appName(appId))}に戻る →</button>` : "";
+  $app.innerHTML = `
+    <div class="done screen-rise">
+      <h1>さっき答えたばかり。</h1>
+      <p>あと${settings.graceMin}分は引き止めない。そのまま${esc(appName(appId))}を使ってOK。</p>
+      ${backBtn}
+    </div>`;
+  const b = document.getElementById("back");
+  if(b) b.addEventListener("click", ()=>{ location.href = a.scheme; });
+}
+
 /* ================= router ================= */
 
 (function main(){
@@ -1005,11 +1007,10 @@ function renderSettings(){
   if(appId){
     const allowed = lastAllowed[appId];
     if(allowed && Date.now() - allowed < settings.graceMin * 60000){
-      // 猶予時間内: 問い詰めずにそのままアプリへ帰す
-      const a = settings.apps.find(a=>a.id===appId);
-      if(a && a.scheme){ location.replace(a.scheme); return; }
+      renderGrace(appId);
+    }else{
+      renderIntercept(appId);
     }
-    renderIntercept(appId);
   }else{
     renderDashboard();
   }

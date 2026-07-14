@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>トガメ — 画面モック</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#ffffff;--ink:#17171a;--ink-2:#55565c;--ink-3:#8e8f96;
+    --hairline:#e8e8ec;--hairline-2:#f2f2f5;--accent:#1c5cab;--accent-soft:#eef4fc;
+    --r-hima:#2a78d6;--r-tohi:#e34948;--r-shirabe:#eda100;--r-work:#008300;--good:#006300;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#ececed;
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    color:var(--ink);padding:48px 40px;-webkit-font-smoothing:antialiased;
+  }
+  .page-title{max-width:1400px;margin:0 auto 8px}
+  .page-title h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .page-title p{color:var(--ink-2);font-size:14px;margin-top:4px}
+
+  .rail{
+    display:flex;gap:40px;overflow-x:auto;padding:36px 4px 24px;
+    max-width:1400px;margin:0 auto;
+  }
+  .frame-wrap{flex:none;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .caption{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .caption span{color:var(--ink-3);font-weight:400}
+
+  /* iPhoneフレーム 390x844・ステータスバーなし */
+  .device{
+    width:390px;height:844px;flex:none;
+    background:var(--bg);border-radius:44px;
+    box-shadow:0 0 0 11px #1b1b1f, 0 22px 50px rgba(0,0,0,.28);
+    overflow:hidden;position:relative;
+  }
+  .screen{
+    position:absolute;inset:0;overflow:hidden;
+    padding:0 24px;
+  }
+  .screen.center{display:flex;flex-direction:column;justify-content:center;padding:48px 24px}
+
+  /* ---- 共通コンポーネント（本体CSSから移植） ---- */
+  .eyebrow{font-size:12px;letter-spacing:.14em;color:var(--ink-3);font-weight:600}
+  h1.big{font-size:28px;font-weight:700;line-height:1.35;letter-spacing:-.01em}
+  h2.sec{font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--ink-3);margin-bottom:14px}
+
+  .choices{display:flex;flex-direction:column;gap:10px;margin-top:36px}
+  .choice{
+    display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;
+    border:1px solid var(--hairline);border-radius:10px;font-size:17px;font-weight:600;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .context-line{margin-top:28px;font-size:13px;color:var(--ink-3)}
+
+  .reason-tag{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:18px}
+  .sub{color:var(--ink-2);font-size:15px;margin:14px 0 8px}
+  .alt{color:var(--ink-3);font-size:13px}
+  .fu-actions{display:flex;flex-direction:column;gap:14px;margin-top:40px}
+  .btn-primary{width:100%;padding:16px;border-radius:10px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;text-align:center}
+  .btn-quiet{width:100%;padding:10px;font-size:14px;color:var(--ink-3);text-decoration:underline;text-underline-offset:3px;text-align:center}
+
+  .done-big{font-size:56px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:20px}
+  .done p{color:var(--ink-2);margin-top:12px}
+
+  /* dashboard */
+  .chrome-top{padding:20px 0 0;background:rgba(255,255,255,.72)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px}
+  .brand-group{display:flex;align-items:center;gap:7px}
+  .brand{font-size:15px;font-weight:700}
+  .date{font-size:12px;color:var(--ink-3);letter-spacing:.06em}
+  .tabs{display:flex;gap:20px;border-bottom:1px solid var(--hairline)}
+  .tabs .tab{position:relative;padding:10px 2px;font-size:14px;font-weight:600;color:var(--ink-3);margin-bottom:-1px}
+  .tabs .tab.on{color:var(--ink)}
+  .tabs .tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--accent);border-radius:2px 2px 0 0}
+  main{padding-top:24px}
+  section{margin-bottom:28px}
+  .hero-num{font-size:56px;font-weight:700;line-height:1.05;letter-spacing:-.02em}
+  .hero-num .unit{font-size:20px;font-weight:600;color:var(--ink-2);margin-left:2px}
+  .hero-sub{font-size:14px;color:var(--ink-2);margin-top:6px}
+  .hero-sub .win{color:var(--good);font-weight:600}
+  .could{border-left:2px solid var(--accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.8}
+  .could em{font-style:normal;font-weight:700;color:var(--accent)}
+  .could .yen{display:block;margin-top:8px;font-size:13px;color:var(--ink-3);font-weight:600}
+  .advice-line{font-size:14px;color:var(--ink-2);line-height:1.85;margin-bottom:16px}
+  .quote{border-left:2px solid var(--hairline);padding-left:14px}
+  .quote p{font-size:14px;color:var(--ink);line-height:1.85}
+  .quote cite{display:block;margin-top:5px;font-size:12px;color:var(--ink-3);font-style:normal}
+  .stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;margin-bottom:16px}
+  .stackbar .seg{height:100%}
+  .brk-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
+  .brk-row .name{flex:1;font-weight:600}
+  .brk-row .val{color:var(--ink-2)}
+  .trend{display:flex;align-items:flex-end;gap:8px;height:96px;padding-top:8px}
+  .trend .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .trend .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;background:#9ec5f4}
+  .trend .bar.today{background:var(--accent)}
+  .trend .lbl{font-size:11px;color:var(--ink-3)}
+  .trend-caption{font-size:12px;color:var(--ink-2);margin-top:10px}
+
+  /* settings */
+  .set-card{border:1px solid var(--hairline);border-radius:12px;padding:18px;margin-bottom:14px}
+  .set-card .name-line{display:flex;align-items:center;justify-content:space-between}
+  .set-card .name-line strong{font-size:15px}
+  .del{font-size:12px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+  .field{margin-top:12px}
+  .field label{display:block;font-size:12px;color:var(--ink-3);letter-spacing:.06em;margin-bottom:4px}
+  .inp{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--hairline);border-radius:8px;color:var(--ink-3)}
+  .add-btn{width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:12px;color:var(--ink-2);font-size:14px;font-weight:600;text-align:center}
+  .hint{font-size:12.5px;color:var(--ink-3);line-height:1.8}
+  .hint code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:var(--hairline-2);padding:1px 5px;border-radius:4px}
+  .minutes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .minutes-grid .cell label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  .fade-bottom{position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(transparent,var(--bg))}
+
+  .brand-icon{flex:none;display:block}
+</style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>トガメ — 画面モック</h1>
+    <p>iPhoneサイズ（390×844）。1枚ずつスクリーンショットしてポートフォリオに使えます。</p>
+  </div>
+
+  <div class="rail">
+
+    <!-- ① 問い詰め -->
+    <div class="frame-wrap">
+      <div class="device">
+        <div class="screen center">
+          <p class="eyebrow" style="margin-bottom:10px">INSTAGRAM を開こうとしています</p>
+          <h1 class="big">なんで開いたの？</h1>
+          <div class="choices">
+            <div class="choice"><span class="dot" style="background:var(--r-hima)"></span>暇つぶし</div>
+            <div class="choice"><span class="dot" style="background:var(--r-tohi)"></span>逃避</div>
+            <div class="choice"><span class="dot" style="background:var(--r-shirabe)"></span>調べもの</div>
+            <div class="choice"><span class="dot" style="background:var(--r-work)"></span>勉強や仕事</div>
+          </div>
+          <p class="context-line">今日3回目。ここまでSNS全体で推定35分。</p>
+        </div>
+      </div>
+      <p class="caption">① 問い詰め <span>／ 開いた瞬間</span></p>
+    </div>
+
+    <!-- ② 返し -->
+    <div class="frame-wrap">
+      <div class="device">
+        <div class="screen center">
+          <span class="reason-tag"><span class="dot" style="background:var(--r-tohi)"></span>逃避</span>
+          <h1 class="big">何から逃げてる？</h1>
+          <p class="sub">開いても、それは消えないよ。</p>
+          <p class="alt">いつもの1回ぶん（約20分）があれば、企業研究1社ぶんができる。</p>
+          <div class="fu-actions">
+            <div class="btn-primary">やめておく</div>
+            <div class="btn-quiet">それでも開く</div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">② 理由への返し <span>／ 逃避を選んだとき</span></p>
+    </div>
+
+    <!-- ③ 引き返した -->
+    <div class="frame-wrap">
+      <div class="device">
+        <div class="screen center" style="align-items:flex-start">
+          <div class="done-big">3</div>
+          <h1 class="big">引き返した。今日3回目のえらい。</h1>
+          <p class="done">このままホーム画面に戻ろう。</p>
+          <div class="btn-quiet" style="text-align:left;padding:24px 0 0;width:auto">今日のまとめを見る →</div>
+        </div>
+      </div>
+      <p class="caption">③ 引き返した <span>／ やめておくを選んだとき</span></p>
+    </div>
+
+    <!-- ④ まとめ -->
+    <div class="frame-wrap">
+      <div class="device">
+        <div class="screen">
+          <div class="chrome-top">
+            <div class="top">
+              <span class="brand-group">
+                <svg class="brand-icon" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
+                  <ellipse cx="6" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 6 10)"/>
+                  <ellipse cx="26" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 26 10)"/>
+                  <ellipse cx="6" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 6 23)"/>
+                  <ellipse cx="26" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 26 23)"/>
+                  <path d="M16 29 L13.3 24.6 L18.7 24.6 Z" fill="#2f8f5b"/>
+                  <circle cx="16" cy="5.2" r="3.4" fill="#2f8f5b"/>
+                  <circle cx="14.8" cy="4.5" r="0.55" fill="#0b3d21"/>
+                  <circle cx="17.2" cy="4.5" r="0.55" fill="#0b3d21"/>
+                  <circle cx="16" cy="17" r="12" fill="#146b3a"/>
+                  <circle cx="16" cy="17" r="9" fill="#f2fbf6"/>
+                  <g stroke="#12321f" stroke-width="1.1" stroke-linecap="round">
+                    <line x1="16" y1="9.2" x2="16" y2="10.6"/><line x1="16" y1="23.4" x2="16" y2="24.8"/>
+                    <line x1="8.2" y1="17" x2="9.6" y2="17"/><line x1="22.4" y1="17" x2="23.8" y2="17"/>
+                  </g>
+                  <line x1="16" y1="17" x2="16" y2="12" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="16" y1="17" x2="19.4" y2="15.1" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="16" cy="17" r="1" fill="#12321f"/>
+                </svg>
+                <span class="brand">トガメ</span>
+              </span>
+              <span class="date">7/13（月）</span>
+            </div>
+            <div class="tabs"><span class="tab on">今日</span><span class="tab">設定</span></div>
+          </div>
+          <main>
+            <section>
+              <div class="hero-num">90<span class="unit">分</span></div>
+              <p class="hero-sub">SNSに溶けた推定時間 ・ 6回開いた ・ <span class="win">2回引き返した</span></p>
+            </section>
+            <section>
+              <div class="could">
+                この時間があれば、<em>軽いアプリのプロトタイプを作る</em>と<em>筋トレ1セット</em>ができました。
+                <span class="yen">時給1100円で換算すると、約1,650円ぶん。</span>
+              </div>
+            </section>
+            <section>
+              <p class="advice-line">「暇つぶし」が一番多い日。その暇、5分でいいから自分のために使ってみない？</p>
+              <blockquote class="quote">
+                <p>為せば成る、為さねば成らぬ何事も、成らぬは人の為さぬなりけり。</p>
+                <cite>— 上杉鷹山</cite>
+              </blockquote>
+            </section>
+            <section>
+              <h2 class="sec">理由別</h2>
+              <div class="stackbar">
+                <div class="seg" style="width:50%;background:var(--r-hima)"></div>
+                <div class="seg" style="width:44%;background:var(--r-tohi)"></div>
+                <div class="seg" style="width:6%;background:var(--r-shirabe)"></div>
+              </div>
+              <div class="brk-row"><span class="dot" style="background:var(--r-hima)"></span><span class="name">暇つぶし</span><span class="val">3回 ・ 推定45分</span></div>
+              <div class="brk-row"><span class="dot" style="background:var(--r-tohi)"></span><span class="name">逃避</span><span class="val">2回 ・ 推定40分</span></div>
+            </section>
+          </main>
+          <div class="fade-bottom"></div>
+        </div>
+      </div>
+      <p class="caption">④ 今日のまとめ <span>／ ダッシュボード</span></p>
+    </div>
+
+    <!-- ⑤ 設定 -->
+    <div class="frame-wrap">
+      <div class="device">
+        <div class="screen">
+          <div class="chrome-top">
+            <div class="top">
+              <span class="brand-group"><span class="brand">トガメ</span></span>
+              <span class="date">7/13（月）</span>
+            </div>
+            <div class="tabs"><span class="tab">今日</span><span class="tab on">設定</span></div>
+          </div>
+          <main>
+            <section>
+              <h2 class="sec">監視するアプリ</h2>
+              <p class="hint" style="margin-bottom:14px">トガメが問い詰める相手を登録する。SNSを開いた瞬間にトガメへ飛ばすには、iPhoneの「ショートカット」で <b>「Appが開かれたとき → URLを開く」</b> にページ下部の<b>ショートカット用URL</b>を貼る。<code>instagram://</code> は元のSNSへ戻る入口。</p>
+              <div class="set-card">
+                <div class="name-line"><strong>Instagram</strong><span class="del">削除</span></div>
+                <div class="field"><label>アプリを再び開くためのURLスキーム</label><div class="inp">instagram://</div></div>
+              </div>
+              <div class="set-card">
+                <div class="name-line"><strong>X</strong><span class="del">削除</span></div>
+                <div class="field"><label>アプリを再び開くためのURLスキーム</label><div class="inp">twitter://</div></div>
+              </div>
+              <div class="add-btn">＋ アプリを追加</div>
+            </section>
+            <section>
+              <h2 class="sec">1回開いたら何分溶ける？</h2>
+              <div class="minutes-grid">
+                <div class="cell"><label><span class="dot" style="background:var(--r-hima)"></span>暇つぶし</label><div class="inp">15</div></div>
+                <div class="cell"><label><span class="dot" style="background:var(--r-tohi)"></span>逃避</label><div class="inp">20</div></div>
+              </div>
+            </section>
+          </main>
+          <div class="fade-bottom"></div>
+        </div>
+      </div>
+      <p class="caption">⑤ 設定 <span>／ 監視アプリと調整</span></p>
+    </div>
+
+  </div>
+</body>
+</html>
