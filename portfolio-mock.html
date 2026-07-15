@@ -83,10 +83,6 @@
   .could{border-left:2px solid var(--accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.8}
   .could em{font-style:normal;font-weight:700;color:var(--accent)}
   .could .yen{display:block;margin-top:8px;font-size:13px;color:var(--ink-3);font-weight:600}
-  .advice-line{font-size:14px;color:var(--ink-2);line-height:1.85;margin-bottom:16px}
-  .quote{border-left:2px solid var(--hairline);padding-left:14px}
-  .quote p{font-size:14px;color:var(--ink);line-height:1.85}
-  .quote cite{display:block;margin-top:5px;font-size:12px;color:var(--ink-3);font-style:normal}
   .stackbar{display:flex;height:14px;border-radius:4px;overflow:hidden;gap:2px;margin-bottom:16px}
   .stackbar .seg{height:100%}
   .brk-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
@@ -107,6 +103,7 @@
   .field{margin-top:12px}
   .field label{display:block;font-size:12px;color:var(--ink-3);letter-spacing:.06em;margin-bottom:4px}
   .inp{width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--hairline);border-radius:8px;color:var(--ink-3)}
+  .copy-url{margin-top:12px;width:100%;padding:11px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;font-size:14px;font-weight:600;background:var(--accent-soft);text-align:center}
   .add-btn{width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:12px;color:var(--ink-2);font-size:14px;font-weight:600;text-align:center}
   .hint{font-size:12.5px;color:var(--ink-3);line-height:1.8}
   .hint code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:var(--hairline-2);padding:1px 5px;border-radius:4px}
@@ -217,13 +214,6 @@
               </div>
             </section>
             <section>
-              <p class="advice-line">「暇つぶし」が一番多い日。その暇、5分でいいから自分のために使ってみない？</p>
-              <blockquote class="quote">
-                <p>為せば成る、為さねば成らぬ何事も、成らぬは人の為さぬなりけり。</p>
-                <cite>— 上杉鷹山</cite>
-              </blockquote>
-            </section>
-            <section>
               <h2 class="sec">理由別</h2>
               <div class="stackbar">
                 <div class="seg" style="width:50%;background:var(--r-hima)"></div>
@@ -232,6 +222,20 @@
               </div>
               <div class="brk-row"><span class="dot" style="background:var(--r-hima)"></span><span class="name">暇つぶし</span><span class="val">3回 ・ 推定45分</span></div>
               <div class="brk-row"><span class="dot" style="background:var(--r-tohi)"></span><span class="name">逃避</span><span class="val">2回 ・ 推定40分</span></div>
+              <div class="brk-row"><span class="dot" style="background:var(--r-shirabe)"></span><span class="name">調べもの</span><span class="val">1回 ・ 推定5分</span></div>
+            </section>
+            <section>
+              <h2 class="sec">この7日間</h2>
+              <div class="trend">
+                <div class="col"><span class="bar" style="height:33%"></span><span class="lbl">火</span></div>
+                <div class="col"><span class="bar" style="height:17%"></span><span class="lbl">水</span></div>
+                <div class="col"><span class="bar" style="height:67%"></span><span class="lbl">木</span></div>
+                <div class="col"><span class="bar" style="height:28%"></span><span class="lbl">金</span></div>
+                <div class="col"><span class="bar" style="height:50%"></span><span class="lbl">土</span></div>
+                <div class="col"><span class="bar" style="height:89%"></span><span class="lbl">日</span></div>
+                <div class="col"><span class="bar today" style="height:100%"></span><span class="lbl">今日</span></div>
+              </div>
+              <p class="trend-caption">バーをタップすると分数が見える</p>
             </section>
           </main>
           <div class="fade-bottom"></div>
@@ -246,7 +250,28 @@
         <div class="screen">
           <div class="chrome-top">
             <div class="top">
-              <span class="brand-group"><span class="brand">トガメ</span></span>
+              <span class="brand-group">
+                <svg class="brand-icon" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
+                  <ellipse cx="6" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 6 10)"/>
+                  <ellipse cx="26" cy="10" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 26 10)"/>
+                  <ellipse cx="6" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(30 6 23)"/>
+                  <ellipse cx="26" cy="23" rx="3" ry="2.2" fill="#2f8f5b" transform="rotate(-30 26 23)"/>
+                  <path d="M16 29 L13.3 24.6 L18.7 24.6 Z" fill="#2f8f5b"/>
+                  <circle cx="16" cy="5.2" r="3.4" fill="#2f8f5b"/>
+                  <circle cx="14.8" cy="4.5" r="0.55" fill="#0b3d21"/>
+                  <circle cx="17.2" cy="4.5" r="0.55" fill="#0b3d21"/>
+                  <circle cx="16" cy="17" r="12" fill="#146b3a"/>
+                  <circle cx="16" cy="17" r="9" fill="#f2fbf6"/>
+                  <g stroke="#12321f" stroke-width="1.1" stroke-linecap="round">
+                    <line x1="16" y1="9.2" x2="16" y2="10.6"/><line x1="16" y1="23.4" x2="16" y2="24.8"/>
+                    <line x1="8.2" y1="17" x2="9.6" y2="17"/><line x1="22.4" y1="17" x2="23.8" y2="17"/>
+                  </g>
+                  <line x1="16" y1="17" x2="16" y2="12" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="16" y1="17" x2="19.4" y2="15.1" stroke="#12321f" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="16" cy="17" r="1" fill="#12321f"/>
+                </svg>
+                <span class="brand">トガメ</span>
+              </span>
               <span class="date">7/13（月）</span>
             </div>
             <div class="tabs"><span class="tab">今日</span><span class="tab on">設定</span></div>
@@ -254,14 +279,16 @@
           <main>
             <section>
               <h2 class="sec">監視するアプリ</h2>
-              <p class="hint" style="margin-bottom:14px">トガメが問い詰める相手を登録する。SNSを開いた瞬間にトガメへ飛ばすには、iPhoneの「ショートカット」で <b>「Appが開かれたとき → URLを開く」</b> にページ下部の<b>ショートカット用URL</b>を貼る。<code>instagram://</code> は元のSNSへ戻る入口。</p>
+              <p class="hint" style="margin-bottom:14px">トガメが問い詰める相手。<b>「URLをコピー」</b>を、ショートカットのオートメーション<b>「Appが開かれたとき → URLを開く」</b>に貼る。<code>instagram://</code> は元のSNSへ戻る入口。</p>
               <div class="set-card">
                 <div class="name-line"><strong>Instagram</strong><span class="del">削除</span></div>
-                <div class="field"><label>アプリを再び開くためのURLスキーム</label><div class="inp">instagram://</div></div>
+                <div class="copy-url">Instagram用のURLをコピー</div>
+                <div class="field"><label>URLスキーム（元のSNSに戻る入口）</label><div class="inp">instagram://</div></div>
               </div>
               <div class="set-card">
                 <div class="name-line"><strong>X</strong><span class="del">削除</span></div>
-                <div class="field"><label>アプリを再び開くためのURLスキーム</label><div class="inp">twitter://</div></div>
+                <div class="copy-url">X用のURLをコピー</div>
+                <div class="field"><label>URLスキーム（元のSNSに戻る入口）</label><div class="inp">twitter://</div></div>
               </div>
               <div class="add-btn">＋ アプリを追加</div>
             </section>

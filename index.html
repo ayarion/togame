@@ -762,6 +762,29 @@ function copyText(text){
 function renderSettings(){
   chrome("settings", `
     <section>
+      <h2>監視するアプリ</h2>
+      <p class="hint" style="margin:0 0 14px">
+        トガメが問い詰める相手。各アプリの<b>「URLをコピー」</b>を押して、iPhoneの「ショートカット」アプリのオートメーション<b>「Appが開かれたとき → URLを開く」</b>に貼ると、そのSNSを開くたびトガメが出る。<br>
+        <b>URLスキーム</b>（例: <code>instagram://</code>）は、問い詰めのあと元のSNSへ戻る入口。分からなければ空でOK。
+      </p>
+      <div id="apps">
+        ${settings.apps.map((a,i)=>`
+          <div class="set-card">
+            <div class="name-line">
+              <strong>${esc(a.name)}</strong>
+              <button class="del" data-del="${i}">削除</button>
+            </div>
+            <button class="copy-url" data-copy="${i}">${esc(a.name)}用のURLをコピー</button>
+            <div class="field">
+              <label>URLスキーム（元のSNSに戻る入口）</label>
+              <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
+            </div>
+          </div>`).join("")}
+      </div>
+      <button class="add-btn" id="add-app">＋ アプリを追加</button>
+    </section>
+
+    <section>
       <h2>1回開いたら何分溶ける？</h2>
       <div class="minutes-grid">
         ${REASONS.map(r=>`
@@ -800,29 +823,6 @@ function renderSettings(){
         <button class="del" id="import">インポート</button>
         <button class="danger" id="wipe">全消去</button>
       </p>
-    </section>
-
-    <section>
-      <h2>監視するアプリ</h2>
-      <p class="hint" style="margin:0 0 14px">
-        トガメが問い詰める相手。各アプリの<b>「URLをコピー」</b>を押して、iPhoneの「ショートカット」アプリのオートメーション<b>「Appが開かれたとき → URLを開く」</b>に貼ると、そのSNSを開くたびトガメが出る。<br>
-        <b>URLスキーム</b>（例: <code>instagram://</code>）は、問い詰めのあと元のSNSへ戻る入口。分からなければ空でOK。
-      </p>
-      <div id="apps">
-        ${settings.apps.map((a,i)=>`
-          <div class="set-card">
-            <div class="name-line">
-              <strong>${esc(a.name)}</strong>
-              <button class="del" data-del="${i}">削除</button>
-            </div>
-            <button class="copy-url" data-copy="${i}">${esc(a.name)}用のURLをコピー</button>
-            <div class="field">
-              <label>URLスキーム（元のSNSに戻る入口）</label>
-              <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
-            </div>
-          </div>`).join("")}
-      </div>
-      <button class="add-btn" id="add-app">＋ アプリを追加</button>
     </section>
   `);
 
