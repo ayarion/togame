@@ -184,12 +184,6 @@
   }
   .could em{font-style:normal;font-weight:700;color:var(--accent)}
   .could .yen{display:block;margin-top:8px;font-size:13px;color:var(--ink-3);font-weight:600}
-
-  /* advice + quote */
-  .advice-line{font-size:14px;color:var(--ink-2);line-height:1.85;margin-bottom:16px}
-  .quote{border-left:2px solid var(--hairline);padding-left:14px}
-  .quote p{font-size:14px;color:var(--ink);line-height:1.85}
-  .quote cite{display:block;margin-top:5px;font-size:12px;color:var(--ink-3);font-style:normal}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--hairline-2);padding:1px 5px;border-radius:4px}
 
   /* breakdown */
@@ -357,7 +351,9 @@ const LS = {
   set(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} },
 };
 
-let settings = Object.assign({}, DEFAULT_SETTINGS, LS.get("nh_settings", {}));
+// DEFAULT_SETTINGSはディープコピーして基底にする（浅いコピーだと settings.apps が
+// DEFAULT_SETTINGS.apps と同じ参照になり、スキーム編集で初期値が汚染され「全消去」が壊れる）
+let settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), LS.get("nh_settings", {}));
 settings.reasonMinutes = Object.assign({}, DEFAULT_SETTINGS.reasonMinutes, settings.reasonMinutes);
 let events = LS.get("nh_events", []);           // {t, app, reason, kind:"open"|"resist"}
 let lastAllowed = LS.get("nh_last", {});        // {appId: epoch ms}
@@ -428,46 +424,6 @@ function toast(msg){
   el.classList.add("show");
   clearTimeout(toast._t);
   toast._t = setTimeout(()=> el.classList.remove("show"), 1800);
-}
-
-/* ================= アドバイス＆名言 =================
-   すべて実在の著名な言葉のみ。出典付き。日付シードで日替わり表示 */
-
-const QUOTES = [
-  { t:"時は金なり。",                                                         by:"ベンジャミン・フランクリン" },
-  { t:"天才とは、1％のひらめきと99％の努力である。",                          by:"トーマス・エジソン" },
-  { t:"為せば成る、為さねば成らぬ何事も、成らぬは人の為さぬなりけり。",        by:"上杉鷹山" },
-  { t:"今日できることを明日に延ばすな。",                                     by:"トーマス・ジェファーソン" },
-  { t:"時間を浪費するな。人生はそれでできているのだから。",                   by:"ベンジャミン・フランクリン" },
-  { t:"小さいことを積み重ねることが、とんでもないところへ行くただ一つの道だ。", by:"イチロー" },
-  { t:"少年老い易く学成り難し、一寸の光陰軽んずべからず。",                    by:"朱熹" },
-  { t:"千里の道も一歩から。",                                                 by:"老子" },
-  { t:"精神一到、何事か成らざらん。",                                         by:"朱熹" },
-  { t:"やってみせ、言って聞かせて、させてみせ、褒めてやらねば人は動かじ。",    by:"山本五十六" },
-  { t:"ハングリーであれ。愚か者であれ。",                                     by:"スティーブ・ジョブズ" },
-  { t:"成功の秘訣は、好機が訪れたときに準備ができていることだ。",             by:"ベンジャミン・ディズレーリ" },
-];
-
-function quoteOfDay(){
-  const now = new Date();
-  const doy = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
-  return QUOTES[doy % QUOTES.length];
-}
-
-function adviceFor(evs){
-  const opens = evs.filter(e=>e.kind==="open");
-  if(opens.length === 0) return "今日はまだ開いてない。いい一日のはじまり。";
-  const counts = {};
-  opens.forEach(e=>{ counts[e.reason]=(counts[e.reason]||0)+1; });
-  let top = null, max = 0;
-  for(const k in counts){ if(counts[k] > max){ max = counts[k]; top = k; } }
-  const map = {
-    hima:    "「暇つぶし」が一番多い日。その暇、5分でいいから自分のために使ってみない？",
-    tohi:    "「逃避」が多い日。しんどいことから逃げてるだけかも。まず一つだけ、手をつけてみよう。",
-    shirabe: "「調べもの」が多い日。目的を果たしたら、そのまま閉じるのを忘れずに。",
-    work:    "道具として使えてる日。この調子。脱線しはじめたら、気づけるように。",
-  };
-  return map[top] || "今日の自分を、そっと観察してみよう。";
 }
 
 /* 「本来なら」換算文 */
@@ -680,9 +636,6 @@ function renderDashboard(){
         : `この時間で、できたことがあったはず。`)
       + `<span class="yen">時給1100円で換算すると、約${yen.toLocaleString()}円ぶん。</span>`;
 
-  /* アドバイス＆名言 */
-  const q = quoteOfDay();
-
   /* 理由別内訳 */
   const byReason = REASONS.map(r=>{
     const n = evs.filter(e=>e.kind==="open" && e.reason===r.id).length;
@@ -712,16 +665,6 @@ function renderDashboard(){
 
     <section>
       <div class="could">${couldHtml}</div>
-    </section>
-
-    <section>
-      <div class="advice">
-        <p class="advice-line">${esc(adviceFor(evs))}</p>
-        <blockquote class="quote">
-          <p>${esc(q.t)}</p>
-          <cite>— ${esc(q.by)}</cite>
-        </blockquote>
-      </div>
     </section>
 
     ${segs.length ? `
@@ -819,28 +762,6 @@ function copyText(text){
 function renderSettings(){
   chrome("settings", `
     <section>
-      <h2>監視するアプリ</h2>
-      <p class="hint" style="margin:0 0 14px">
-        トガメが問い詰める相手を登録する。SNSを開いた瞬間にトガメへ飛ばすには、iPhoneの「ショートカット」アプリでオートメーションを作り、<b>「Appが開かれたとき → URLを開く」</b>に、このページ一番下の<b>ショートカット用URL</b>を貼る。<br>
-        下の<b>URLスキーム</b>は、問い詰めのあと元のSNSへ戻るための入口（例: <code>instagram://</code>）。アプリごとに違い、分からなければそのままでOK。
-      </p>
-      <div id="apps">
-        ${settings.apps.map((a,i)=>`
-          <div class="set-card">
-            <div class="name-line">
-              <strong>${esc(a.name)}</strong>
-              <button class="del" data-del="${i}">削除</button>
-            </div>
-            <div class="field">
-              <label>アプリを再び開くためのURLスキーム</label>
-              <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
-            </div>
-          </div>`).join("")}
-      </div>
-      <button class="add-btn" id="add-app">＋ アプリを追加</button>
-    </section>
-
-    <section>
       <h2>1回開いたら何分溶ける？</h2>
       <div class="minutes-grid">
         ${REASONS.map(r=>`
@@ -882,13 +803,26 @@ function renderSettings(){
     </section>
 
     <section>
-      <h2>ショートカット用URL</h2>
-      <p class="hint" style="margin:0 0 12px">下のURLを、各アプリのオートメーション「URLを開く」に貼る。</p>
-      ${settings.apps.map((a,i)=>`
-        <div class="set-card">
-          <div class="name-line"><strong>${esc(a.name)}</strong></div>
-          <button class="copy-url" data-copy="${i}">${esc(a.name)}用のURLをコピー</button>
-        </div>`).join("")}
+      <h2>監視するアプリ</h2>
+      <p class="hint" style="margin:0 0 14px">
+        トガメが問い詰める相手。各アプリの<b>「URLをコピー」</b>を押して、iPhoneの「ショートカット」アプリのオートメーション<b>「Appが開かれたとき → URLを開く」</b>に貼ると、そのSNSを開くたびトガメが出る。<br>
+        <b>URLスキーム</b>（例: <code>instagram://</code>）は、問い詰めのあと元のSNSへ戻る入口。分からなければ空でOK。
+      </p>
+      <div id="apps">
+        ${settings.apps.map((a,i)=>`
+          <div class="set-card">
+            <div class="name-line">
+              <strong>${esc(a.name)}</strong>
+              <button class="del" data-del="${i}">削除</button>
+            </div>
+            <button class="copy-url" data-copy="${i}">${esc(a.name)}用のURLをコピー</button>
+            <div class="field">
+              <label>URLスキーム（元のSNSに戻る入口）</label>
+              <input type="text" data-scheme="${i}" value="${esc(a.scheme)}" placeholder="instagram://">
+            </div>
+          </div>`).join("")}
+      </div>
+      <button class="add-btn" id="add-app">＋ アプリを追加</button>
     </section>
   `);
 
