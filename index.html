@@ -532,15 +532,27 @@ function renderFollowup(appId, reason){
   });
 }
 
+/* 通行証: SNSに戻る直前にクリップボードへ書く。オートメーション側が
+   これを見つけたら「消して何もしない」ことで再発火ループを切る */
+function writePass(then){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText("togame-pass").then(then, then);
+  }else{
+    then();
+  }
+}
+
 function allowAndOpen(appId){
   lastAllowed[appId] = Date.now();
   saveLast();
   const a = settings.apps.find(a=>a.id===appId);
-  if(a && a.scheme){
-    location.href = a.scheme;
-  }else{
-    $app.innerHTML = `<div class="done screen-rise"><h1>どうぞ。</h1><p>ホームに戻って${esc(appName(appId))}を開いてOK。${settings.graceMin}分間は引き止めない。</p></div>`;
-  }
+  writePass(()=>{
+    if(a && a.scheme){
+      location.href = a.scheme;
+    }else{
+      $app.innerHTML = `<div class="done screen-rise"><h1>どうぞ。</h1><p>ホームに戻って${esc(appName(appId))}を開いてOK。${settings.graceMin}分間は引き止めない。</p></div>`;
+    }
+  });
 }
 
 function renderResistDone(){
@@ -930,7 +942,7 @@ function renderGrace(appId){
       ${backBtn}
     </div>`;
   const b = document.getElementById("back");
-  if(b) b.addEventListener("click", ()=>{ location.href = a.scheme; });
+  if(b) b.addEventListener("click", ()=>{ writePass(()=>{ location.href = a.scheme; }); });
 }
 
 /* ================= router ================= */
