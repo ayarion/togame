@@ -41,7 +41,7 @@
 
 5. （その他の場合の中）**URLを開く**（Open URLs）
    - トガメの「設定 → 監視するアプリ」で **Instagram用のURLをコピー** して貼る
-     （`https://ayarion.github.io/togame/?app=instagram` の形）
+     （`https://tsukuriba.org/togame/?app=instagram` の形）
 
 6. 右上「完了」で保存
 
