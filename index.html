@@ -200,10 +200,22 @@
   /* trend */
   .trend{display:flex;align-items:flex-end;gap:8px;height:96px;padding-top:8px}
   .trend .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
-  .trend .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;background:#9ec5f4;min-height:2px;border:none;padding:0;display:block}
+  .trend .bar{
+    width:100%;max-width:34px;border-radius:4px 4px 0 0;background:#9ec5f4;min-height:2px;
+    border:none;padding:0;display:block;
+    transition:background 160ms var(--ease-out);
+  }
   .trend .bar.today{background:var(--accent)}
+  .trend .bar.picked{background:var(--ink)}
   .trend .lbl{font-size:11px;color:var(--ink-3)}
-  .trend-caption{font-size:12px;color:var(--ink-2);margin-top:10px;min-height:1.5em;font-variant-numeric:tabular-nums}
+  .trend .col.picked .lbl{color:var(--ink);font-weight:700}
+  /* 選択した日の分数はグラフの上に出す */
+  .trend-readout{
+    font-size:13px;color:var(--ink-3);margin-bottom:10px;min-height:1.6em;
+    font-variant-numeric:tabular-nums;
+  }
+  .trend-readout .day{color:var(--ink-2);font-weight:600}
+  .trend-readout .min{color:var(--ink);font-weight:700;font-size:15px}
 
   .empty{
     border:1px dashed var(--hairline);border-radius:12px;padding:28px 22px;
@@ -695,6 +707,7 @@ function renderDashboard(){
 
     <section>
       <h2>この7日間</h2>
+      <p class="trend-readout" id="trend-cap" aria-live="polite">バーをタップすると分数が見える</p>
       <div class="trend">
         ${days.map((d,i)=>`
           <div class="col">
@@ -704,7 +717,6 @@ function renderDashboard(){
             <span class="lbl">${d.today ? "今日" : d.wd}</span>
           </div>`).join("")}
       </div>
-      <p class="trend-caption" id="trend-cap">バーをタップすると分数が見える</p>
     </section>
 
     ${Object.keys(byApp).length ? `
@@ -719,8 +731,17 @@ function renderDashboard(){
     bar.addEventListener("click", ()=>{
       const d = days[Number(bar.dataset.i)];
       const [,m,dd] = d.key.split("-");
-      document.getElementById("trend-cap").textContent =
-        `${Number(m)}/${Number(dd)}（${d.wd}）: ${d.min}分 ・ ${eventsOn(d.key).filter(e=>e.kind==="open").length}回`;
+      const opens   = eventsOn(d.key).filter(e=>e.kind==="open").length;
+      const resists = eventsOn(d.key).filter(e=>e.kind==="resist").length;
+      // 選択中のバーを目立たせる（前の選択は解除）
+      $app.querySelectorAll(".trend .bar.picked").forEach(b=>b.classList.remove("picked"));
+      $app.querySelectorAll(".trend .col.picked").forEach(c=>c.classList.remove("picked"));
+      bar.classList.add("picked");
+      bar.closest(".col").classList.add("picked");
+      document.getElementById("trend-cap").innerHTML =
+        `<span class="day">${Number(m)}/${Number(dd)}（${d.wd}）</span> ・ ` +
+        `<span class="min">${d.min}分</span> ・ ${opens}回開いた` +
+        (resists ? ` ・ ${resists}回引き返した` : "");
     });
   });
 }
