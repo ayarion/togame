@@ -42,7 +42,7 @@
     font-weight:600;
   }
   h1{font-size:28px;font-weight:700;line-height:1.35;letter-spacing:-0.01em;text-wrap:balance;word-break:auto-phrase}
-  h2{font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--ink-3);margin-bottom:14px}
+  h2{font-size:17px;font-weight:700;letter-spacing:.01em;color:var(--ink);margin-bottom:14px}
 
   button{
     font:inherit;color:inherit;background:none;border:none;cursor:pointer;
@@ -177,19 +177,44 @@
   .hero-sub{font-size:14px;color:var(--ink-2);margin-top:6px}
   .hero-sub .win{color:var(--good);font-weight:600}
 
-  /* ヒーロー下の遷移ボタン（ホームは簡潔に保ち、詳細は別ページへ逃がす） */
-  .hero-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-  .jump{
-    display:inline-flex;align-items:center;gap:4px;
-    padding:7px 12px;border:1px solid var(--hairline);border-radius:99px;
-    font-size:13px;font-weight:600;color:var(--ink-2);background:var(--bg);
-    transition:transform 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out);
+  /* 主役の2数字。回数を最上部・最大に置き、押すと各詳細ページへ */
+  .counts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .count-block{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    padding:14px 14px 12px;border-radius:14px;text-align:left;
+    background:var(--hairline-2);
+    transition:background 160ms var(--ease-out), transform 160ms var(--ease-out);
   }
-  .jump:hover{border-color:var(--accent);color:var(--accent)}
-  .jump.win{color:var(--good)}
-  .jump.win:hover{border-color:var(--good)}
-  .jump .chev{color:var(--ink-3);font-weight:400}
-  .jump:hover .chev{color:inherit}
+  .count-block:hover{background:#e9e9ee}
+  .count-block:active{transform:scale(0.98)}
+  .count-block .cnum{
+    font-size:40px;font-weight:700;line-height:1.1;letter-spacing:-0.02em;
+    color:var(--ink-2);font-variant-numeric:tabular-nums;
+  }
+  .count-block .cunit{font-size:17px;font-weight:600;margin-left:2px}
+  .count-block .clabel{
+    display:inline-flex;align-items:center;gap:3px;
+    font-size:14px;font-weight:600;color:var(--ink-2);
+  }
+  .count-block .chev{color:var(--ink-3);font-weight:400}
+  /* 引き返した＝青。開いた＝グレー（逃避の赤と衝突させない） */
+  .count-block.win .cnum,
+  .count-block.win .clabel{color:var(--accent)}
+  .count-block.win{background:var(--accent-soft)}
+  .count-block.win:hover{background:#e3edfa}
+  .count-block.win .chev{color:var(--accent)}
+
+  /* 溶けた時間は推定値なので主役から降ろす（ラベルを上・大きく、数字は小さく） */
+  .melt-label{font-size:16px;font-weight:600;color:var(--ink-2);margin-bottom:2px}
+  .melt-num{font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+  .melt-num .unit{font-size:15px;font-weight:600;color:var(--ink-2);margin-left:2px}
+
+  /* 角丸グレーのセクションカード */
+  .card-sec{background:var(--hairline-2);border-radius:14px;padding:18px 16px}
+  /* カード内は背景がグレーなので、区切り線と棒グラフの下地を白側に振る */
+  .card-sec .brk-row{border-bottom-color:#e2e2e8}
+  .card-sec .app-row{border-bottom-color:#e2e2e8}
+  .card-sec .stackbar{background:transparent}
 
   /* サブページ共通 */
   .back{
@@ -255,6 +280,9 @@
   .trend .bar.picked{background:var(--accent-deep)}
   .trend .lbl{font-size:11px;color:var(--ink-3)}
   .trend .col.picked .lbl{color:var(--ink);font-weight:700}
+  /* 押せることを説明文でなく手触りで伝える：列全体がタップ領域として反応する */
+  .trend .col{border-radius:6px;padding:4px 2px;cursor:pointer;transition:background 160ms var(--ease-out)}
+  .trend .col:hover{background:rgba(28,92,171,.08)}
   /* 選択した日の分数はグラフの上に出す */
   .trend-readout{
     font-size:13px;color:var(--ink-3);margin-bottom:10px;min-height:1.6em;
@@ -727,14 +755,28 @@ function renderDashboard(){
   }
   const maxMin = Math.max(...days.map(d=>d.min), 30);
 
+  /* 初期表示から今日の分数を出しておく（説明文なしで押せると伝わるように） */
+  const td = days[days.length-1];
+  const [,tm,tdd] = td.key.split("-");
+  const initReadout = `<span class="day">${Number(tm)}/${Number(tdd)}（${td.wd}）</span> <span class="min">${td.min}分</span>`;
+
   chrome("today", `
     <section>
-      <div class="hero-num">${total}<span class="unit">分</span></div>
-      <p class="hero-sub">SNSに溶けた推定時間</p>
-      <div class="hero-links">
-        <button class="jump" id="to-heat">${opens}回開いた<span class="chev">›</span></button>
-        ${resists ? `<button class="jump win" id="to-recovered">${resists}回引き返した<span class="chev">›</span></button>` : ""}
+      <div class="counts">
+        <button class="count-block" id="to-heat">
+          <span class="cnum">${opens}<span class="cunit">回</span></span>
+          <span class="clabel">開いた<span class="chev">›</span></span>
+        </button>
+        <button class="count-block win" id="to-recovered">
+          <span class="cnum">${resists}<span class="cunit">回</span></span>
+          <span class="clabel">引き返した<span class="chev">›</span></span>
+        </button>
       </div>
+    </section>
+
+    <section>
+      <p class="melt-label">SNSに溶けた推定時間</p>
+      <div class="melt-num">${total}<span class="unit">分</span></div>
     </section>
 
     <section>
@@ -742,7 +784,7 @@ function renderDashboard(){
     </section>
 
     ${segs.length ? `
-    <section>
+    <section class="card-sec">
       <h2>理由別</h2>
       <div class="stackbar" role="img" aria-label="理由別の内訳バー">
         ${segs.map(b=>`<div class="seg" style="width:${(b.min/sumMin*100).toFixed(1)}%;background:${b.color}"></div>`).join("")}
@@ -755,26 +797,26 @@ function renderDashboard(){
         </div>`).join("")}
     </section>` : ""}
 
-    <section>
+    ${Object.keys(byApp).length ? `
+    <section class="card-sec">
+      <h2>アプリ別</h2>
+      ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`
+        <div class="app-row"><span>${esc(appName(id))}</span><span class="val">${n}回</span></div>`).join("")}
+    </section>` : ""}
+
+    <section class="card-sec">
       <h2>この7日間</h2>
-      <p class="trend-readout" id="trend-cap" aria-live="polite">バーをタップすると分数が見える</p>
+      <p class="trend-readout" id="trend-cap" aria-live="polite">${initReadout}</p>
       <div class="trend">
         ${days.map((d,i)=>`
-          <div class="col">
-            <button class="bar${d.today?" today":""}" data-i="${i}"
+          <div class="col${d.today?" picked":""}">
+            <button class="bar${d.today?" today picked":""}" data-i="${i}"
               style="height:${Math.max(2, d.min/maxMin*100).toFixed(1)}%"
               aria-label="${d.key} 推定${d.min}分"></button>
             <span class="lbl">${d.today ? "今日" : d.wd}</span>
           </div>`).join("")}
       </div>
     </section>
-
-    ${Object.keys(byApp).length ? `
-    <section>
-      <h2>アプリ別</h2>
-      ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`
-        <div class="app-row"><span>${esc(appName(id))}</span><span class="val">${n}回</span></div>`).join("")}
-    </section>` : ""}
   `);
 
   const heatBtn = document.getElementById("to-heat");
@@ -782,15 +824,17 @@ function renderDashboard(){
   const recBtn = document.getElementById("to-recovered");
   if(recBtn) recBtn.addEventListener("click", ()=> swap(renderRecovered));
 
-  $app.querySelectorAll(".trend .bar").forEach(bar=>{
-    bar.addEventListener("click", ()=>{
+  // 列全体をタップ領域にする（細いバーだけだと押しづらいため）
+  $app.querySelectorAll(".trend .col").forEach(col=>{
+    col.addEventListener("click", ()=>{
+      const bar = col.querySelector(".bar");
       const d = days[Number(bar.dataset.i)];
       const [,m,dd] = d.key.split("-");
-      // 選択中のバーを目立たせる（前の選択は解除）
+      // 選択中の日を目立たせる（前の選択は解除）
       $app.querySelectorAll(".trend .bar.picked").forEach(b=>b.classList.remove("picked"));
       $app.querySelectorAll(".trend .col.picked").forEach(c=>c.classList.remove("picked"));
       bar.classList.add("picked");
-      bar.closest(".col").classList.add("picked");
+      col.classList.add("picked");
       document.getElementById("trend-cap").innerHTML =
         `<span class="day">${Number(m)}/${Number(dd)}（${d.wd}）</span> <span class="min">${d.min}分</span>`;
     });
