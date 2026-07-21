@@ -8,6 +8,7 @@
 <style>
   :root{
     --bg:#ffffff;
+    --page-bg:#eceef1;
     --ink:#17171a;
     --ink-2:#55565c;
     --ink-3:#8e8f96;
@@ -16,10 +17,15 @@
     --accent:#1c5cab;
     --accent-deep:#0e3a72;
     --accent-soft:#eef4fc;
-    --r-hima:#2a78d6;
-    --r-tohi:#e34948;
-    --r-shirabe:#eda100;
-    --r-work:#008300;
+    /* 理由は2系統に統一。無意識＝赤／目的あり＝青（同系内は濃淡で区別） */
+    --r-hima:#d94a45;
+    --r-tohi:#ef8c86;
+    --r-shirabe:#2f7fd0;
+    --r-work:#8fbcea;
+    --tag-red-bg:#fdeceb;
+    --tag-red-ink:#c0403b;
+    --tag-blue-bg:#eaf2fc;
+    --tag-blue-ink:#1f66ad;
     --good:#006300;
     /* animations.dev: 標準イージングは弱いのでカスタムカーブを使う */
     --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
@@ -27,7 +33,7 @@
     --ease-drawer:cubic-bezier(0.32, 0.72, 0, 1);
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{background:var(--bg)}
+  html,body{background:var(--page-bg)}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
     color:var(--ink);
@@ -133,12 +139,12 @@
   .chrome-top{
     position:sticky;top:0;z-index:10;
     margin:0 -24px;padding:0 24px;
-    background:rgba(255,255,255,.72);
+    background:rgba(236,238,241,.78);
     -webkit-backdrop-filter:blur(20px) saturate(180%);
     backdrop-filter:blur(20px) saturate(180%);
   }
   @media (prefers-reduced-transparency: reduce){
-    .chrome-top{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+    .chrome-top{background:var(--page-bg);-webkit-backdrop-filter:none;backdrop-filter:none}
   }
   header.top{
     display:flex;align-items:baseline;justify-content:space-between;
@@ -209,11 +215,59 @@
   .melt-num{font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
   .melt-num .unit{font-size:15px;font-weight:600;color:var(--ink-2);margin-left:2px}
 
-  /* 理由別の下にぶら下がる小見出し（理由別 ＞ アプリ別） */
-  h3.sub{font-size:14px;font-weight:700;color:var(--ink-2);margin:26px 0 10px}
-
   /* 7日間の要約 */
   .week-stats{margin-top:18px;border-top:1px solid var(--hairline-2);padding-top:6px}
+
+  /* ---- グレー地に白カードを並べるレイアウト ---- */
+  main > section{
+    background:var(--bg);border-radius:16px;padding:20px 18px;margin-bottom:14px;
+  }
+  main > section.bare{background:transparent;padding:0}
+
+  /* 理由につく「無意識 / 目的あり」バッジ */
+  .tag{
+    font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;
+    white-space:nowrap;letter-spacing:.02em;
+  }
+  .tag.mui{background:var(--tag-red-bg);color:var(--tag-red-ink)}
+  .tag.moku{background:var(--tag-blue-bg);color:var(--tag-blue-ink)}
+
+  /* 理由行：左に色ドット＋名前＋バッジ、右に回数と分数 */
+  .rsn-row{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid var(--hairline-2)}
+  .rsn-row:last-child{border-bottom:none}
+  .rsn-row .name{font-size:15px;font-weight:700}
+  .rsn-row .spacer{flex:1}
+  .rsn-row .nums{text-align:right;line-height:1.3}
+  .rsn-row .n{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rsn-row .m{display:block;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+  /* 割合の問いかけカード */
+  .challenge{
+    display:flex;align-items:center;gap:14px;
+    border-radius:16px;padding:18px;margin-bottom:14px;
+  }
+  .challenge.red{background:var(--tag-red-bg)}
+  .challenge.blue{background:var(--tag-blue-bg)}
+  .challenge .pct{font-size:34px;font-weight:700;line-height:1;letter-spacing:-0.02em;flex:none}
+  .challenge.red .pct{color:var(--tag-red-ink)}
+  .challenge.blue .pct{color:var(--tag-blue-ink)}
+  .challenge .msg{font-size:14px;line-height:1.65;font-weight:600;text-wrap:pretty;word-break:auto-phrase}
+  .challenge.red .msg{color:var(--tag-red-ink)}
+  .challenge.blue .msg{color:var(--tag-blue-ink)}
+
+  /* ---- 折りたたみ（見出しタップで下にスムーズに展開） ---- */
+  .fold-head{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    width:100%;text-align:left;
+  }
+  .fold-head .arrow{
+    color:var(--ink-3);font-size:13px;flex:none;
+    transition:transform 320ms var(--ease-out);
+  }
+  .fold-head[aria-expanded="true"] .arrow{transform:rotate(90deg)}
+  /* 高さをJSで実測して開閉する（fr単位のtransitionは環境差が大きいため） */
+  .fold-body{overflow:hidden;height:0;transition:height 320ms var(--ease-out)}
+  .fold-body > .inner{padding-top:14px}
 
   /* サブページ共通 */
   .back{
@@ -386,6 +440,8 @@
     .sheet{transition:opacity 200ms ease;transform:none;opacity:0}
     .sheet-open .sheet{opacity:1}
     button:active,.choice:active{transform:none;opacity:.7}
+    .fold-body{transition:none}
+    .fold-head .arrow{transition:none}
   }
 </style>
 
@@ -397,11 +453,12 @@
 
 /* ================= data ================= */
 
+/* group: 無意識＝赤系（開いた自分を疑うべき理由）／目的あり＝青系（道具として使えている理由） */
 const REASONS = [
-  { id:"hima",    label:"暇つぶし",   color:"var(--r-hima)" },
-  { id:"tohi",    label:"逃避",       color:"var(--r-tohi)" },
-  { id:"shirabe", label:"調べもの",   color:"var(--r-shirabe)" },
-  { id:"work",    label:"勉強や仕事", color:"var(--r-work)" },
+  { id:"hima",    label:"暇つぶし",   color:"var(--r-hima)",    group:"無意識"   },
+  { id:"tohi",    label:"逃避",       color:"var(--r-tohi)",    group:"無意識"   },
+  { id:"shirabe", label:"調べもの",   color:"var(--r-shirabe)", group:"目的あり" },
+  { id:"work",    label:"勉強や仕事", color:"var(--r-work)",    group:"目的あり" },
 ];
 const R = Object.fromEntries(REASONS.map(r=>[r.id,r]));
 
@@ -516,7 +573,8 @@ function couldHaveText(totalMin){
     if(done.length >= 2) break;
     const n = Math.floor(rest / it.min);
     if(n >= 1){
-      done.push(n > 1 ? `${it.name}を${n}回` : it.name);
+      // 「〜を作る」のような項目名だと「を」が重複するので括弧書きにする
+      done.push(n > 1 ? `${it.name}（${n}回ぶん）` : it.name);
       rest -= n * it.min;
     }
   }
@@ -721,13 +779,11 @@ function renderDashboard(){
 
   /* 換算文 */
   const could = couldHaveText(total);
-  const yen = Math.floor(total * 1100 / 60);
   const couldHtml = total < 5
     ? `今日はまだほとんど時間を失っていない。<em>この調子。</em>`
     : (could.length
         ? `この時間があれば、<em>${could.map(esc).join("</em>と<em>")}</em>ができました。`
-        : `この時間で、できたことがあったはず。`)
-      + `<span class="yen">時給1100円で換算すると、約${yen.toLocaleString()}円ぶん。</span>`;
+        : `この時間で、できたことがあったはず。`);
 
   /* 理由別内訳 */
   const byReason = REASONS.map(r=>{
@@ -736,6 +792,20 @@ function renderDashboard(){
   });
   const sumMin = byReason.reduce((s,b)=>s+b.min,0) || 1;
   const segs = byReason.filter(b=>b.min>0);
+
+  /* いちばん多い理由の割合。無意識系が最多なら問い詰め、目的あり系なら肯定する */
+  const top = byReason.reduce((a,b)=> b.n > a.n ? b : a, byReason[0]);
+  const topPct = opens ? Math.round(top.n / opens * 100) : 0;
+  const isMui = top.group === "無意識";
+  const challengeHtml = opens && top.n > 0 ? `
+    <div class="challenge ${isMui ? "red" : "blue"}">
+      <span class="pct">${topPct}%</span>
+      <span class="msg">が「${esc(top.label)}」。${
+        isMui
+          ? `その${top.min}分、本当に必要だった？`
+          : `目的があって開けている。`
+      }</span>
+    </div>` : "";
 
   /* アプリ別 */
   const byApp = {};
@@ -787,48 +857,64 @@ function renderDashboard(){
       <div class="melt-num">${total}<span class="unit">分</span></div>
     </section>
 
+    ${challengeHtml}
+
     <section>
       <div class="could">${couldHtml}</div>
     </section>
 
     ${segs.length ? `
     <section>
-      <h2>理由別</h2>
-      <div class="stackbar" role="img" aria-label="理由別の内訳バー">
+      <h2>なぜ開いた？</h2>
+      <div class="stackbar" role="img" aria-label="理由の内訳バー">
         ${segs.map(b=>`<div class="seg" style="width:${(b.min/sumMin*100).toFixed(1)}%;background:${b.color}"></div>`).join("")}
       </div>
       ${byReason.filter(b=>b.n>0).map(b=>`
-        <div class="brk-row">
+        <div class="rsn-row">
           <span class="dot" style="background:${b.color}"></span>
           <span class="name">${b.label}</span>
-          <span class="val">${b.n}回 ・ 推定${b.min}分</span>
+          <span class="tag ${b.group === "無意識" ? "mui" : "moku"}">${b.group}</span>
+          <span class="spacer"></span>
+          <span class="nums">
+            <span class="n" style="color:${b.color}">${b.n}回</span>
+            <span class="m">推定${b.min}分</span>
+          </span>
         </div>`).join("")}
+    </section>` : ""}
 
-      ${Object.keys(byApp).length ? `
-        <h3 class="sub">アプリ別</h3>
+    ${Object.keys(byApp).length ? `
+    <section>
+      <button class="fold-head" id="fold-app" aria-expanded="false" aria-controls="body-app">
+        <h2 style="margin:0">アプリ別</h2><span class="arrow">›</span>
+      </button>
+      <div class="fold-body" id="body-app"><div class="inner">
         ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`
           <div class="app-row"><span>${esc(appName(id))}</span><span class="val">${n}回</span></div>`).join("")}
-      ` : ""}
+      </div></div>
     </section>` : ""}
 
     <section>
-      <h2>この7日間</h2>
-      <p class="trend-readout" id="trend-cap" aria-live="polite">${initReadout}</p>
-      <div class="trend">
-        ${days.map((d,i)=>`
-          <div class="col${d.today?" picked":""}">
-            <button class="bar${d.today?" today picked":""}" data-i="${i}"
-              style="height:${Math.max(2, d.min/maxMin*100).toFixed(1)}%"
-              aria-label="${d.key} 推定${d.min}分"></button>
-            <span class="lbl">${d.today ? "今日" : d.wd}</span>
-          </div>`).join("")}
-      </div>
-      <div class="week-stats">
-        <div class="stat-row"><span>1日の平均</span><span class="val">${weekAvg}分</span></div>
-        <div class="stat-row"><span>7日間の合計</span><span class="val">${weekTotal}分</span></div>
-        <div class="stat-row"><span>いちばん多い日</span><span class="val">${peak.min > 0 ? `${peak.today ? "今日" : peak.wd+"曜"} ・ ${peak.min}分` : "—"}</span></div>
-        <div class="stat-row"><span>先週の平均から</span><span class="val">${diffText}</span></div>
-      </div>
+      <button class="fold-head" id="fold-week" aria-expanded="false" aria-controls="body-week">
+        <h2 style="margin:0">この7日間</h2><span class="arrow">›</span>
+      </button>
+      <div class="fold-body" id="body-week"><div class="inner">
+        <p class="trend-readout" id="trend-cap" aria-live="polite">${initReadout}</p>
+        <div class="trend">
+          ${days.map((d,i)=>`
+            <div class="col${d.today?" picked":""}">
+              <button class="bar${d.today?" today picked":""}" data-i="${i}"
+                style="height:${Math.max(2, d.min/maxMin*100).toFixed(1)}%"
+                aria-label="${d.key} 推定${d.min}分"></button>
+              <span class="lbl">${d.today ? "今日" : d.wd}</span>
+            </div>`).join("")}
+        </div>
+        <div class="week-stats">
+          <div class="stat-row"><span>1日の平均</span><span class="val">${weekAvg}分</span></div>
+          <div class="stat-row"><span>7日間の合計</span><span class="val">${weekTotal}分</span></div>
+          <div class="stat-row"><span>いちばん多い日</span><span class="val">${peak.min > 0 ? `${peak.today ? "今日" : peak.wd+"曜"} ・ ${peak.min}分` : "—"}</span></div>
+          <div class="stat-row"><span>先週の平均から</span><span class="val">${diffText}</span></div>
+        </div>
+      </div></div>
     </section>
   `);
 
@@ -836,6 +922,19 @@ function renderDashboard(){
   if(heatBtn) heatBtn.addEventListener("click", ()=> swap(renderHeatmap));
   const recBtn = document.getElementById("to-recovered");
   if(recBtn) recBtn.addEventListener("click", ()=> swap(renderRecovered));
+
+  // 見出しタップで下に展開する折りたたみ。開ききったらautoにして中身の変化に追従させる
+  [["fold-app","body-app"], ["fold-week","body-week"]].forEach(([hid,bid])=>{
+    const head = document.getElementById(hid), body = document.getElementById(bid);
+    if(!head || !body) return;
+    const inner = body.querySelector(".inner");
+    head.addEventListener("click", ()=>{
+      const open = body.classList.toggle("open");
+      head.setAttribute("aria-expanded", String(open));
+      // 実測値と0pxの往復だけで完結させる（autoを挟むと環境によって開かないため）
+      body.style.height = open ? inner.offsetHeight + "px" : "0px";
+    });
+  });
 
   // 列全体をタップ領域にする（細いバーだけだと押しづらいため）
   $app.querySelectorAll(".trend .col").forEach(col=>{
