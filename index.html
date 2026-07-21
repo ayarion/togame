@@ -14,6 +14,7 @@
     --hairline:#e8e8ec;
     --hairline-2:#f2f2f5;
     --accent:#1c5cab;
+    --accent-deep:#0e3a72;
     --accent-soft:#eef4fc;
     --r-hima:#2a78d6;
     --r-tohi:#e34948;
@@ -176,6 +177,50 @@
   .hero-sub{font-size:14px;color:var(--ink-2);margin-top:6px}
   .hero-sub .win{color:var(--good);font-weight:600}
 
+  /* ヒーロー下の遷移ボタン（ホームは簡潔に保ち、詳細は別ページへ逃がす） */
+  .hero-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .jump{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:7px 12px;border:1px solid var(--hairline);border-radius:99px;
+    font-size:13px;font-weight:600;color:var(--ink-2);background:var(--bg);
+    transition:transform 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out);
+  }
+  .jump:hover{border-color:var(--accent);color:var(--accent)}
+  .jump.win{color:var(--good)}
+  .jump.win:hover{border-color:var(--good)}
+  .jump .chev{color:var(--ink-3);font-weight:400}
+  .jump:hover .chev{color:inherit}
+
+  /* サブページ共通 */
+  .back{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:14px;font-weight:600;color:var(--ink-3);padding:4px 0;margin-bottom:18px;
+  }
+  .back:hover{color:var(--accent)}
+  .sub-hero{font-size:48px;font-weight:700;line-height:1.05;letter-spacing:-0.02em}
+  .sub-hero .unit{font-size:18px;font-weight:600;color:var(--ink-2);margin-left:2px}
+  .sub-lead{font-size:14px;color:var(--ink-2);margin-top:6px}
+  .stat-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
+  .stat-row:last-child{border-bottom:none}
+  .stat-row .val{font-variant-numeric:tabular-nums;font-weight:600}
+
+  /* ヒートマップ */
+  .insight{
+    border-left:2px solid var(--accent);padding:4px 0 4px 16px;
+    font-size:15px;line-height:1.8;margin-bottom:24px;
+  }
+  .insight em{font-style:normal;font-weight:700;color:var(--accent)}
+  .heat{display:grid;grid-template-columns:auto repeat(6,1fr);gap:4px;align-items:center}
+  .heat .rh{font-size:12px;font-weight:600;color:var(--ink-2);padding-right:6px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+  .heat .ch{font-size:10px;color:var(--ink-3);text-align:center;padding-bottom:2px}
+  .heat .cell{
+    aspect-ratio:1;border-radius:4px;background:var(--hairline-2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;
+  }
+  .heat .cell.zero{color:var(--ink-3);font-weight:400}
+  .heat-legend{font-size:12px;color:var(--ink-3);margin-top:14px;line-height:1.8}
+
   /* could-have card */
   .could{
     border-left:2px solid var(--accent);
@@ -206,7 +251,8 @@
     transition:background 160ms var(--ease-out);
   }
   .trend .bar.today{background:var(--accent)}
-  .trend .bar.picked{background:var(--ink)}
+  .trend .bar:hover,
+  .trend .bar.picked{background:var(--accent-deep)}
   .trend .lbl{font-size:11px;color:var(--ink-3)}
   .trend .col.picked .lbl{color:var(--ink);font-weight:700}
   /* 選択した日の分数はグラフの上に出す */
@@ -684,7 +730,11 @@ function renderDashboard(){
   chrome("today", `
     <section>
       <div class="hero-num">${total}<span class="unit">分</span></div>
-      <p class="hero-sub">SNSに溶けた推定時間 ・ ${opens}回開いた${resists ? ` ・ <span class="win">${resists}回引き返した</span>` : ""}</p>
+      <p class="hero-sub">SNSに溶けた推定時間</p>
+      <div class="hero-links">
+        <button class="jump" id="to-heat">${opens}回開いた<span class="chev">›</span></button>
+        ${resists ? `<button class="jump win" id="to-recovered">${resists}回引き返した<span class="chev">›</span></button>` : ""}
+      </div>
     </section>
 
     <section>
@@ -727,23 +777,145 @@ function renderDashboard(){
     </section>` : ""}
   `);
 
+  const heatBtn = document.getElementById("to-heat");
+  if(heatBtn) heatBtn.addEventListener("click", ()=> swap(renderHeatmap));
+  const recBtn = document.getElementById("to-recovered");
+  if(recBtn) recBtn.addEventListener("click", ()=> swap(renderRecovered));
+
   $app.querySelectorAll(".trend .bar").forEach(bar=>{
     bar.addEventListener("click", ()=>{
       const d = days[Number(bar.dataset.i)];
       const [,m,dd] = d.key.split("-");
-      const opens   = eventsOn(d.key).filter(e=>e.kind==="open").length;
-      const resists = eventsOn(d.key).filter(e=>e.kind==="resist").length;
       // 選択中のバーを目立たせる（前の選択は解除）
       $app.querySelectorAll(".trend .bar.picked").forEach(b=>b.classList.remove("picked"));
       $app.querySelectorAll(".trend .col.picked").forEach(c=>c.classList.remove("picked"));
       bar.classList.add("picked");
       bar.closest(".col").classList.add("picked");
       document.getElementById("trend-cap").innerHTML =
-        `<span class="day">${Number(m)}/${Number(dd)}（${d.wd}）</span> ・ ` +
-        `<span class="min">${d.min}分</span> ・ ${opens}回開いた` +
-        (resists ? ` ・ ${resists}回引き返した` : "");
+        `<span class="day">${Number(m)}/${Number(dd)}（${d.wd}）</span> <span class="min">${d.min}分</span>`;
     });
   });
+}
+
+/* ================= サブページ ================= */
+
+/* 引き返した回数 × その理由の分数 = 守りきった時間。
+   スクリーンタイムでは原理的に測れない（開いていないので記録が残らない）数字 */
+function recoveredMin(evs){
+  return evs.reduce((s,e)=> s + (e.kind==="resist" && e.reason ? (settings.reasonMinutes[e.reason]||0) : 0), 0);
+}
+
+function renderRecovered(){
+  const today = eventsOn(todayKey());
+  const todayMin = recoveredMin(today);
+
+  // 直近7日
+  let weekMin = 0, weekCount = 0;
+  for(let i=0;i<7;i++){
+    const evs = eventsOn(dayKey(Date.now() - i*86400000));
+    weekMin += recoveredMin(evs);
+    weekCount += evs.filter(e=>e.kind==="resist").length;
+  }
+  const allMin   = recoveredMin(events);
+  const allCount = events.filter(e=>e.kind==="resist").length;
+
+  const could = couldHaveText(todayMin);
+  const couldHtml = todayMin > 0 && could.length
+    ? `この時間で、<em>${could.map(esc).join("</em>と<em>")}</em>ができる。`
+    : `引き返すたび、ここに時間が積み上がる。`;
+
+  /* 理由別の内訳 */
+  const byReason = REASONS.map(r=>{
+    const n = today.filter(e=>e.kind==="resist" && e.reason===r.id).length;
+    return { ...r, n, min: n * (settings.reasonMinutes[r.id]||0) };
+  }).filter(b=>b.n>0);
+
+  chrome("today", `
+    <button class="back" id="back-home">‹ 今日</button>
+    <section>
+      <p class="eyebrow">取り戻した時間</p>
+      <div class="sub-hero">${todayMin}<span class="unit">分</span></div>
+      <p class="sub-lead">今日、開かずに済ませた時間</p>
+    </section>
+
+    <section>
+      <div class="could">${couldHtml}</div>
+    </section>
+
+    ${byReason.length ? `
+    <section>
+      <h2>引き返した理由</h2>
+      ${byReason.map(b=>`
+        <div class="brk-row">
+          <span class="dot" style="background:${b.color}"></span>
+          <span class="name">${b.label}</span>
+          <span class="val">${b.n}回 ・ ${b.min}分</span>
+        </div>`).join("")}
+    </section>` : ""}
+
+    <section>
+      <h2>これまで</h2>
+      <div class="stat-row"><span>この7日間</span><span class="val">${weekCount}回 ・ ${weekMin}分</span></div>
+      <div class="stat-row"><span>累計</span><span class="val">${allCount}回 ・ ${allMin}分</span></div>
+    </section>
+  `);
+
+  document.getElementById("back-home").addEventListener("click", ()=> swap(renderDashboard));
+}
+
+/* 時間帯 × 理由。いつ・どの理由で負けやすいかを出す */
+const HEAT_BUCKETS = [
+  { label:"0-3",   from:0,  to:3  },
+  { label:"4-7",   from:4,  to:7  },
+  { label:"8-11",  from:8,  to:11 },
+  { label:"12-15", from:12, to:15 },
+  { label:"16-19", from:16, to:19 },
+  { label:"20-23", from:20, to:23 },
+];
+
+function renderHeatmap(){
+  // 直近7日ぶんを対象にする（1日だとマスが埋まらないため）
+  const since = Date.now() - 7*86400000;
+  const opens = events.filter(e=>e.kind==="open" && e.t >= since && e.reason);
+
+  const grid = {};
+  let max = 0, topCell = null;
+  REASONS.forEach(r=>{
+    grid[r.id] = HEAT_BUCKETS.map(()=>0);
+  });
+  opens.forEach(e=>{
+    const h = new Date(e.t).getHours();
+    const bi = HEAT_BUCKETS.findIndex(b => h >= b.from && h <= b.to);
+    if(bi < 0 || !grid[e.reason]) return;
+    const v = ++grid[e.reason][bi];
+    if(v > max){ max = v; topCell = { reason:e.reason, bi }; }
+  });
+
+  const insight = topCell
+    ? `いちばん多いのは <em>${HEAT_BUCKETS[topCell.bi].label}時</em> の <em>${R[topCell.reason].label}</em>。ここが弱点。`
+    : `まだデータが足りない。記録がたまると弱点が見えてくる。`;
+
+  chrome("today", `
+    <button class="back" id="back-home">‹ 今日</button>
+    <section>
+      <p class="eyebrow">いつ開いてる？</p>
+      <div class="insight" style="margin-top:12px">${insight}</div>
+      <div class="heat">
+        <span></span>
+        ${HEAT_BUCKETS.map(b=>`<span class="ch">${b.label}</span>`).join("")}
+        ${REASONS.map(r=>`
+          <span class="rh"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
+          ${grid[r.id].map(v=>`
+            <span class="cell${v?"":" zero"}"
+              style="${v?`background:${r.color};opacity:${(0.25 + 0.75*v/max).toFixed(2)}`:""}"
+              title="${r.label} ${v}回">${v||""}</span>`).join("")}
+        `).join("")}
+      </div>
+      <p class="heat-legend">直近7日間・時間帯（時）別の開いた回数。色が濃いほど多い。</p>
+    </section>
+  `);
+
+  document.getElementById("back-home").addEventListener("click", ()=> swap(renderDashboard));
 }
 
 function renderEmpty(){
