@@ -485,7 +485,7 @@ const DEFAULT_SETTINGS = {
   ],
   reasonMinutes: { hima:15, tohi:20, shirabe:5, work:10 },
   graceMin: 5,
-  agent: { endpoint:"", secret:"", voice:"" },
+  agent: { endpoint:"", secret:"", voice:"", dailyMax:20 },
   conversions: [
     { name:"軽いアプリのプロトタイプを作る", min:60 },
     { name:"筋トレ1セット",                   min:30 },
@@ -512,11 +512,18 @@ settings.agent = Object.assign({}, DEFAULT_SETTINGS.agent, settings.agent);
 let events = LS.get("nh_events", []);           // {t, app, reason, kind:"open"|"resist"}
 let lastAllowed = LS.get("nh_last", {});        // {appId: epoch ms}
 let recentLines = LS.get("nh_lines", []);       // 直近に言われたセリフ（毎回ちがうことを言わせるため）
+let agentCount = LS.get("nh_agentcount", {});   // {日付: 回数} APIは従量課金なので1日の上限を持つ
 
 function saveSettings(){ LS.set("nh_settings", settings); }
 function saveEvents(){ LS.set("nh_events", events); }
 function saveLast(){ LS.set("nh_last", lastAllowed); }
 function saveLines(){ recentLines = recentLines.slice(-6); LS.set("nh_lines", recentLines); }
+/* 今日すでに何回声をかけてもらったか。日付が変わったら勝手にリセットされる */
+function agentUsedToday(){ return agentCount[todayKey()] || 0; }
+function bumpAgentCount(){
+  agentCount = { [todayKey()]: agentUsedToday() + 1 };  // 今日ぶんだけ残す
+  LS.set("nh_agentcount", agentCount);
+}
 
 /* ================= helpers ================= */
 
@@ -682,6 +689,10 @@ function followupPrompt(appId, reason){
 async function runAgentLine(appId, reason){
   const el = document.getElementById("agent-line");
   if(!el || !(settings.agent && settings.agent.endpoint)) return;
+  /* APIは1回叩くたびにお金がかかる。上限を超えたら固定のセリフだけで済ませる */
+  const max = Number(settings.agent.dailyMax);
+  if(max > 0 && agentUsedToday() >= max) return;
+  bumpAgentCount();
   el.classList.add("thinking");
   try{
     const text = await askAgent({
@@ -791,7 +802,9 @@ function renderFollowup(appId, reason){
     renderResistDone();
   });
 
-  runAgentLine(appId, reason);
+  /* 声をかけるのは無意識寄りの理由のときだけ。「調べもの」「勉強や仕事」は
+     目的があって開いているので、邪魔する理由がない（呼び出し回数も半分以下になる） */
+  if(fu.stay) runAgentLine(appId, reason);
 }
 
 /* 通行証: SNSに戻る直前にクリップボードへ書く。オートメーション側が
@@ -1277,6 +1290,11 @@ function renderSettings(){
         <label for="ag-voice">口調（普段のカスタム指示をそのまま貼る）</label>
         <textarea id="ag-voice" rows="5" placeholder="ClaudeやChatGPTの「どう応答してほしいか」の設定を、そのままコピーして貼る">${esc(settings.agent.voice)}</textarea>
       </div>
+      <div class="field">
+        <label for="ag-max">1日に声をかけてもらう上限（今日はここまで ${agentUsedToday()} 回）</label>
+        <input type="number" id="ag-max" value="${settings.agent.dailyMax}" min="0" max="200" inputmode="numeric">
+      </div>
+      <p class="hint" style="margin:8px 0 0">APIは1回ごとに課金される（Claude Proの月額とは別の財布）。上限を超えた分は固定のセリフだけになる。0にすると声かけを止める。「調べもの」「勉強や仕事」を選んだときは、そもそも呼ばない。</p>
       <button class="copy-url" id="ag-test">つながるか試す</button>
       <p class="hint" id="ag-result" style="margin:8px 0 0" aria-live="polite"></p>
     </section>
@@ -1367,6 +1385,9 @@ function renderSettings(){
       settings.agent[k] = e.target.value.trim(); saveSettings();
     });
   });
+  document.getElementById("ag-max").addEventListener("change", e=>{
+    settings.agent.dailyMax = Math.max(0, Number(e.target.value)||0); saveSettings();
+  });
   document.getElementById("ag-test").addEventListener("click", async ()=>{
     const out = document.getElementById("ag-result");
     ["endpoint","secret","voice"].forEach(k=>{
@@ -1431,8 +1452,9 @@ function renderSettings(){
         localStorage.removeItem("nh_settings");
         localStorage.removeItem("nh_last");
         localStorage.removeItem("nh_lines");
+        localStorage.removeItem("nh_agentcount");
         settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        events = []; lastAllowed = {}; recentLines = [];
+        events = []; lastAllowed = {}; recentLines = []; agentCount = {};
         toast("全部消した");
         swap(renderDashboard);
       },
