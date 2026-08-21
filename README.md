@@ -25,3 +25,4 @@ iOSではWebアプリから他アプリの上に画面を重ねられないた�
 - GitHub Pages
 - localStorage（ログイン不要・端末内保存）
 - iOS ショートカット（オートメーション）
+- Cloudflare Workers（[worker/](worker/) — Claude APIのキーを隠すためのプロキシ。設定でエンドポイントを入れた時だけ、返しの画面にAIの一言が流れる）

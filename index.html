@@ -116,6 +116,16 @@
   .followup h1{margin-bottom:14px}
   .followup .sub{color:var(--ink-2);font-size:15px;margin-bottom:8px}
   .followup .alt{color:var(--ink-3);font-size:13px}
+  /* AIのひとこと。固定のセリフを置き換えるのではなく、その下に足す。
+     画面は先に出しきっているので、遅れても届かなくても問い詰めは成立する */
+  .followup .agent{margin-top:16px;font-size:16px;line-height:1.9;color:var(--ink);white-space:pre-wrap}
+  .followup .agent:empty{margin:0}
+  .followup .agent.thinking::after{
+    content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--ink-3);animation:agent-pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes agent-pulse{0%,100%{opacity:.18}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.followup .agent.thinking::after{animation:none;opacity:.5}}
   .fu-actions{display:flex;flex-direction:column;gap:14px;margin-top:40px}
   .btn-primary{
     width:100%;padding:16px;border-radius:10px;
@@ -363,6 +373,10 @@
     border:1px solid var(--hairline);border-radius:8px;background:var(--bg);color:var(--ink);
   }
   input[type="number"]{font-variant-numeric:tabular-nums}
+  textarea{
+    width:100%;padding:10px 12px;font:inherit;font-size:15px;line-height:1.7;
+    border:1px solid var(--hairline);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical;
+  }
   .copy-url{
     margin-top:12px;width:100%;padding:11px;border:1px solid var(--accent);
     color:var(--accent);border-radius:8px;font-size:14px;font-weight:600;background:var(--accent-soft);
@@ -471,6 +485,7 @@ const DEFAULT_SETTINGS = {
   ],
   reasonMinutes: { hima:15, tohi:20, shirabe:5, work:10 },
   graceMin: 5,
+  agent: { endpoint:"", secret:"", voice:"" },
   conversions: [
     { name:"軽いアプリのプロトタイプを作る", min:60 },
     { name:"筋トレ1セット",                   min:30 },
@@ -493,12 +508,15 @@ const LS = {
 // DEFAULT_SETTINGS.apps と同じ参照になり、スキーム編集で初期値が汚染され「全消去」が壊れる）
 let settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), LS.get("nh_settings", {}));
 settings.reasonMinutes = Object.assign({}, DEFAULT_SETTINGS.reasonMinutes, settings.reasonMinutes);
+settings.agent = Object.assign({}, DEFAULT_SETTINGS.agent, settings.agent);
 let events = LS.get("nh_events", []);           // {t, app, reason, kind:"open"|"resist"}
 let lastAllowed = LS.get("nh_last", {});        // {appId: epoch ms}
+let recentLines = LS.get("nh_lines", []);       // 直近に言われたセリフ（毎回ちがうことを言わせるため）
 
 function saveSettings(){ LS.set("nh_settings", settings); }
 function saveEvents(){ LS.set("nh_events", events); }
 function saveLast(){ LS.set("nh_last", lastAllowed); }
+function saveLines(){ recentLines = recentLines.slice(-6); LS.set("nh_lines", recentLines); }
 
 /* ================= helpers ================= */
 
@@ -581,6 +599,104 @@ function couldHaveText(totalMin){
   return done;
 }
 
+/* ================= エージェント ================= */
+
+/* Workers経由でClaudeにひとこともらう。届いた文字からonDeltaに流す。
+   APIキーをブラウザに置けないので直接は叩かない（worker/index.js を参照） */
+async function askAgent({ system, user, onDelta }){
+  const a = settings.agent || {};
+  if(!a.endpoint) return null;
+  const res = await fetch(a.endpoint, {
+    method: "POST",
+    headers: { "content-type":"application/json", "x-togame-key": a.secret || "" },
+    body: JSON.stringify({ system, user }),
+  });
+  if(!res.ok) throw new Error((await res.text()).slice(0,300) || String(res.status));
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", out = "";
+  for(;;){
+    const { value, done } = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, { stream:true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for(const line of lines){
+      if(!line.startsWith("data:")) continue;
+      let ev;
+      try{ ev = JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
+      /* thinkingのdeltaも流れてくるのでtext_deltaだけ拾う */
+      if(ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta"){
+        out += ev.delta.text;
+        if(onDelta) onDelta(ev.delta.text, out);
+      }
+    }
+  }
+  return out.trim();
+}
+
+/* 人格。「普段話しているAIが、そのままトガメに出てくる」という建て付け。
+   命令形を禁じているのは心理的リアクタンス対策——統制的な言い方をされると、
+   言われた内容だけでなく言った相手ごと拒絶される（source derogation）。
+   毎回ちがう角度を要求しているのは慣れ（habituation）対策 */
+function agentSystem(){
+  const voice = ((settings.agent && settings.agent.voice) || "").trim();
+  return [
+    "あなたは、この人が普段から話しているAIです。同じ口調のまま、トガメというアプリの中に出てきます。",
+    "初対面ではないし、説教しに来たのでもありません。隣にいる人として、ひとこと置くだけです。",
+    "",
+    "# あなたの口調",
+    voice || "普段どおり、素のままで。",
+    "",
+    "# 決まり",
+    "- 命令しない。「〜すべき」「〜しなさい」「〜した方がいい」は使わない。",
+    "- 決めるのは本人。選択肢は最後まで本人の手に残す。やめさせようとしない。",
+    "- 責めない。皮肉も言わない。正論を並べない。",
+    "- 渡された事実だけを使う。知らないことは言わない。数字を盛らない。",
+    "- 直前に言ったことと同じ言い回しは使わない。毎回ちがう角度から。",
+    "- 2文以内。長いと読まれない。",
+    "- 前置きも自己紹介もしない。セリフだけを返す。",
+  ].join("\n");
+}
+
+/* いま何が起きているかを、事実だけ渡す */
+function followupPrompt(appId, reason){
+  const todayAll = eventsOn(todayKey());
+  const todayEvs = todayAll.filter(e=>e.app===appId);
+  const nth      = todayEvs.filter(e=>e.kind==="open").length;
+  const resists  = todayAll.filter(e=>e.kind==="resist").length;
+  const now      = new Date();
+  const alt      = couldHaveText(settings.reasonMinutes[reason] || 0);
+  return [
+    `いま ${appName(appId)} を開こうとして、理由に「${R[reason].label}」を選んだところ。`,
+    `時刻は${now.getHours()}時${String(now.getMinutes()).padStart(2,"0")}分。`,
+    `${appName(appId)}は今日${nth}回目。${appName(appId)}に今日${estMinutes(todayEvs)}分、SNS全体で${estMinutes(todayAll)}分。`,
+    resists ? `今日は${resists}回、開かずに引き返している。` : "",
+    alt.length ? `この人が「同じ時間があればできたのに」と自分で登録しているのは: ${alt.join("、")}。` : "",
+    recentLines.length ? `\n直前に言ったこと（同じ言い回しは避ける）:\n- ${recentLines.slice(-3).join("\n- ")}` : "",
+    "\nこの人に、ひとこと。",
+  ].filter(Boolean).join("\n");
+}
+
+async function runAgentLine(appId, reason){
+  const el = document.getElementById("agent-line");
+  if(!el || !(settings.agent && settings.agent.endpoint)) return;
+  el.classList.add("thinking");
+  try{
+    const text = await askAgent({
+      system: agentSystem(),
+      user: followupPrompt(appId, reason),
+      onDelta(_d, all){ el.classList.remove("thinking"); el.textContent = all; },
+    });
+    if(text){ el.textContent = text; recentLines.push(text); saveLines(); }
+  }catch(e){
+    /* 届かなければ何も出さない。固定のセリフだけがそのまま残る */
+    el.textContent = "";
+  }
+  el.classList.remove("thinking");
+}
+
 /* ================= intercept flow ================= */
 
 function renderIntercept(appId){
@@ -588,10 +704,14 @@ function renderIntercept(appId){
   const todayEvs = eventsOn(todayKey()).filter(e=>e.app===appId);
   const nth = todayEvs.filter(e=>e.kind==="open").length + 1;
   const todayAll = eventsOn(todayKey());
-  const min = estMinutes(todayAll);
+  const min    = estMinutes(todayAll);
+  const appMin = estMinutes(todayEvs);
+  const detail = (min - appMin) > 0
+    ? `${name}だけで${appMin}分、SNS全体で${min}分`
+    : `${name}に${appMin}分`;
   const ctx = nth === 1
     ? "今日はじめての起動。"
-    : `今日${nth}回目。ここまでSNS全体で推定${min}分。`;
+    : `今日${nth}回目。ここまで${detail}（推定）。`;
 
   $app.innerHTML = `
     <div class="intercept">
@@ -656,6 +776,7 @@ function renderFollowup(appId, reason){
       <span class="reason-tag"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
       <h1>${esc(fu.line)}</h1>
       <p class="sub">${esc(fu.sub)}</p>
+      <p class="agent" id="agent-line" aria-live="polite"></p>
       ${altLine ? `<p class="alt">${esc(altLine)}</p>` : ""}
       <div class="fu-actions">
         ${fu.stay ? stayBtn + openBtn : openBtn + stayBtn}
@@ -669,6 +790,8 @@ function renderFollowup(appId, reason){
     saveEvents();
     renderResistDone();
   });
+
+  runAgentLine(appId, reason);
 }
 
 /* 通行証: SNSに戻る直前にクリップボードへ書く。オートメーション側が
@@ -1140,6 +1263,25 @@ function renderSettings(){
     </section>
 
     <section>
+      <h2>声をかけてくる相手</h2>
+      <p class="hint" style="margin:0 0 12px">普段あなたが話しているClaudeを、そのままここに呼んでくる。<code>worker/</code> のWorkerを立てて、その住所と合言葉を入れる。空のままなら今まで通り固定のセリフだけ。</p>
+      <div class="field">
+        <label for="ag-endpoint">Workerの住所</label>
+        <input type="text" id="ag-endpoint" value="${esc(settings.agent.endpoint)}" placeholder="https://togame-agent.xxxx.workers.dev" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="ag-secret">合言葉</label>
+        <input type="text" id="ag-secret" value="${esc(settings.agent.secret)}" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="ag-voice">口調（普段のカスタム指示をそのまま貼る）</label>
+        <textarea id="ag-voice" rows="5" placeholder="ClaudeやChatGPTの「どう応答してほしいか」の設定を、そのままコピーして貼る">${esc(settings.agent.voice)}</textarea>
+      </div>
+      <button class="copy-url" id="ag-test">つながるか試す</button>
+      <p class="hint" id="ag-result" style="margin:8px 0 0" aria-live="polite"></p>
+    </section>
+
+    <section>
       <h2>1回開いたら何分溶ける？</h2>
       <div class="minutes-grid">
         ${REASONS.map(r=>`
@@ -1219,6 +1361,31 @@ function renderSettings(){
   document.getElementById("grace").addEventListener("change", e=>{
     settings.graceMin = Math.max(1, Number(e.target.value)||5); saveSettings();
   });
+  /* エージェント */
+  ["endpoint","secret","voice"].forEach(k=>{
+    document.getElementById("ag-"+k).addEventListener("change", e=>{
+      settings.agent[k] = e.target.value.trim(); saveSettings();
+    });
+  });
+  document.getElementById("ag-test").addEventListener("click", async ()=>{
+    const out = document.getElementById("ag-result");
+    ["endpoint","secret","voice"].forEach(k=>{
+      settings.agent[k] = document.getElementById("ag-"+k).value.trim();
+    });
+    saveSettings();
+    if(!settings.agent.endpoint){ out.textContent = "Workerの住所が空。"; return; }
+    out.textContent = "つないでいる…";
+    try{
+      const text = await askAgent({
+        system: agentSystem(),
+        user: "接続の確認をしています。いつもの調子で、ひとことだけ返してください。",
+        onDelta(_d, all){ out.textContent = all; },
+      });
+      out.textContent = text || "返事が空だった。";
+    }catch(e){
+      out.textContent = "つながらない: " + ((e && e.message) || e);
+    }
+  });
 
   /* conversions */
   $app.querySelectorAll("[data-cname]").forEach(inp=>inp.addEventListener("change", ()=>{
@@ -1263,8 +1430,9 @@ function renderSettings(){
         localStorage.removeItem("nh_events");
         localStorage.removeItem("nh_settings");
         localStorage.removeItem("nh_last");
+        localStorage.removeItem("nh_lines");
         settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        events = []; lastAllowed = {};
+        events = []; lastAllowed = {}; recentLines = [];
         toast("全部消した");
         swap(renderDashboard);
       },
