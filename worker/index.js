@@ -9,7 +9,12 @@
 
    合言葉は、このWorkerを他人に勝手に使われて課金が伸びるのを防ぐためだけのもの。 */
 
-const MODEL = "claude-opus-5";
+const MODEL = "claude-haiku-4-5";
+
+/* Opus 5 / Sonnet 5 系だけが受け付けるオプションがある。
+   Haiku 4.5 に effort や fallbacks を送ると 400 で落ちるので、モデルで切り替える。
+   MODEL を claude-opus-5 に戻せば、そのまま元の設定に戻る */
+const IS_FRONTIER = /^claude-(opus|sonnet|fable)-(5|4-[678])/.test(MODEL);
 
 /* ここに載っていないオリジンからは叩けない */
 const ALLOWED_ORIGINS = [
@@ -25,6 +30,33 @@ function corsHeaders(origin){
     "access-control-allow-methods": "POST,OPTIONS",
     "vary": "origin",
   };
+}
+
+function anthropicHeaders(env){
+  const h = {
+    "content-type": "application/json",
+    "x-api-key": env.ANTHROPIC_API_KEY.trim(),
+    "anthropic-version": "2023-06-01",
+  };
+  /* 安全側の判定で断られた時に別モデルへ逃がす仕組み。上位モデルのみ */
+  if(IS_FRONTIER) h["anthropic-beta"] = "server-side-fallback-2026-07-01";
+  return h;
+}
+
+function buildPayload(system, user){
+  const p = {
+    model: MODEL,
+    max_tokens: 1000,
+    stream: true,
+    system,
+    messages: [{ role: "user", content: user }],
+  };
+  if(IS_FRONTIER){
+    /* ひとことを返すだけなので思考は浅くていい。速さがそのまま体験になる */
+    p.output_config = { effort: "low" };
+    p.fallbacks = "default";
+  }
+  return p;
 }
 
 export default {
@@ -48,23 +80,8 @@ export default {
 
     const upstream = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": env.ANTHROPIC_API_KEY.trim(),
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "server-side-fallback-2026-07-01",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 2000,
-        stream: true,
-        system,
-        messages: [{ role: "user", content: user }],
-        /* ひとことを返すだけなので思考は浅くていい。速さがそのまま体験になる */
-        output_config: { effort: "low" },
-        /* 安全側の判定で断られた時に、別モデルへ自動で逃がす */
-        fallbacks: "default",
-      }),
+      headers: anthropicHeaders(env),
+      body: JSON.stringify(buildPayload(system, user)),
     });
 
     /* エラーはそのまま返す。設定画面のテストボタンで中身が見えるように */
