@@ -1,3 +1,10 @@
 name = "togame-agent"
 main = "index.js"
 compatibility_date = "2026-08-01"
+
+# workers.dev を使わず、tsukuriba.org に直接ぶら下げる。
+# custom_domain = true なら deploy 時にDNSレコードも自動で作られる。
+# apex（GitHub Pagesに向いているAレコード）には触らない。
+routes = [
+  { pattern = "agent.tsukuriba.org", custom_domain = true }
+]
