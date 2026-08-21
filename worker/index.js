@@ -32,6 +32,7 @@ export default {
     const h = corsHeaders(req.headers.get("origin") || "");
 
     if(req.method === "OPTIONS") return new Response(null, { status:204, headers:h });
+
     if(req.method !== "POST")    return new Response("POSTだけ", { status:405, headers:h });
     if(!env.ANTHROPIC_API_KEY)   return new Response("ANTHROPIC_API_KEY が未設定", { status:500, headers:h });
     if(req.headers.get("x-togame-key") !== env.TOGAME_SECRET)
@@ -49,13 +50,13 @@ export default {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": env.ANTHROPIC_API_KEY,
+        "x-api-key": env.ANTHROPIC_API_KEY.trim(),
         "anthropic-version": "2023-06-01",
         "anthropic-beta": "server-side-fallback-2026-07-01",
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 400,
+        max_tokens: 2000,
         stream: true,
         system,
         messages: [{ role: "user", content: user }],
