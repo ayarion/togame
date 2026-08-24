@@ -92,6 +92,8 @@ async function runWorkersAI(env, system, user, h){
         { role: "user",   content: user },
       ],
       max_tokens: 512,
+      /* 既定のままだと無難で定型的な文になりやすいので、少し散らす */
+      temperature: 0.85,
       stream: true,
     });
     return new Response(toAnthropicSSE(stream), { headers: sseHeaders(h) });
