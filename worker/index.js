@@ -53,17 +53,18 @@ const sseHeaders = h => ({
    トガメ側（index.html の askAgent）は Anthropic の text_delta 形式を読むので、
    ここで詰め替える。こうしておけば、提供元を変えてもページ側は一切触らなくていい */
 function toAnthropicSSE(cfStream){
+  /* マルチバイト文字がチャンク境界で割れるので、デコーダーは使い回して
+     {stream:true} で継ぎ目を持ち越させる。チャンクごとに使い捨てにすると
+     割れた文字が壊れ、その行のJSON.parseが失敗して丸ごと捨てられ、
+     結果として数字などがごっそり欠ける（実際にそのバグを踏んだ） */
+  const dec = new TextDecoder();
   const enc = new TextEncoder();
   let buf = "";
   return cfStream.pipeThrough(new TransformStream({
     transform(chunk, ctrl){
-      /* 実測: env.AI.run(...,{stream:true}) のチャンクは1回のreadで完結した行で届く。
-         にもかかわらず持続デコーダー(TextDecoder+{stream:true})を挟むと日本語が
-         壊れる現象を確認したため、チャンク単位で使い捨てデコードする。
-         Workers AIはモデルによって {"response":"..."} 形式と
-         OpenAI互換の {"choices":[{"delta":{"content":"..."}}]} 形式のどちらかで
-         返すため、両対応しておく */
-      buf += new TextDecoder().decode(chunk);
+      /* Workers AI はモデルによって {"response":"..."} 形式と、OpenAI互換の
+         {"choices":[{"delta":{"content":"..."}}]} 形式のどちらかで返す。両対応する */
+      buf += dec.decode(chunk, { stream: true });
       const lines = buf.split("\n");
       buf = lines.pop();                     // 行の途中は次の塊まで持ち越す
       for(const line of lines){
@@ -73,9 +74,18 @@ function toAnthropicSSE(cfStream){
         if(payload === "[DONE]" || !payload) continue;
         let ev;
         try{ ev = JSON.parse(payload); }catch(e){ continue; }
-        const text = (ev.response != null) ? ev.response
-          : (ev.choices && ev.choices[0] && ev.choices[0].delta ? ev.choices[0].delta.content : undefined);
-        if(typeof text !== "string" || text === "") continue;
+        /* Workers AI は数字トークンだけ response を数値型で返してくる
+           （例: {"response":14,"choices":[{"delta":{"content":"14"}}]}）。
+           文字列だけ通す判定にしていたため、数字がごっそり欠けていた。
+           choices 側は常に文字列なのでそちらを優先し、無い場合だけ
+           response を使って String() で受け止める */
+        const raw = (ev.choices && ev.choices[0] && ev.choices[0].delta
+          && ev.choices[0].delta.content != null)
+          ? ev.choices[0].delta.content
+          : ev.response;
+        if(raw == null) continue;
+        const text = String(raw);
+        if(text === "") continue;
         ctrl.enqueue(enc.encode("data: " + JSON.stringify({
           type: "content_block_delta",
           index: 0,
