@@ -1,20 +1,29 @@
 /* トガメのエージェント用プロキシ。
-   APIキーは静的HTMLに置けない（GitHub Pagesは世界中から読める）ので、
-   Cloudflare Workers を1枚だけ挟んでキーをこちら側に隠す。
+
+   既定は Cloudflare Workers AI（無料枠 10,000ニューロン/日）。
+   トガメ1回ぶんは約27ニューロンなので、1日およそ370回まで無料で収まる。
+   「使うたびに金が減る」感覚を消すのが目的（課金を気にして理由を偽る問題への対処）。
+
+   PROVIDER を "anthropic" に変えると、従来どおり Claude を叩く形に戻せる。
 
    デプロイ:
-     npx wrangler secret put ANTHROPIC_API_KEY   # Anthropicのコンソールで発行したキー
-     npx wrangler secret put TOGAME_SECRET       # 自分で決める合言葉。トガメの設定にも同じものを入れる
      npx wrangler deploy
+     npx wrangler secret put TOGAME_SECRET      # 自分で決める合言葉。トガメの設定にも同じものを入れる
+     npx wrangler secret put ANTHROPIC_API_KEY  # PROVIDER="anthropic" のときだけ必要
 
-   合言葉は、このWorkerを他人に勝手に使われて課金が伸びるのを防ぐためだけのもの。 */
+   合言葉は、このWorkerを他人に勝手に使われるのを防ぐためのもの。 */
 
-const MODEL = "claude-haiku-4-5";
+const PROVIDER = "workers-ai";   // "workers-ai" | "anthropic"
+
+/* Workers AI のモデル。入力24,545 / 出力77,273 ニューロン per 1Mトークン。
+   他の候補: @cf/mistralai/mistral-small-3.1-24b-instruct（入力31,876 / 出力50,488） */
+const CF_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+
+const ANTHROPIC_MODEL = "claude-haiku-4-5";
 
 /* Opus 5 / Sonnet 5 系だけが受け付けるオプションがある。
-   Haiku 4.5 に effort や fallbacks を送ると 400 で落ちるので、モデルで切り替える。
-   MODEL を claude-opus-5 に戻せば、そのまま元の設定に戻る */
-const IS_FRONTIER = /^claude-(opus|sonnet|fable)-(5|4-[678])/.test(MODEL);
+   Haiku 4.5 に effort や fallbacks を送ると 400 で落ちるので、モデルで切り替える */
+const IS_FRONTIER = /^claude-(opus|sonnet|fable)-(5|4-[678])/.test(ANTHROPIC_MODEL);
 
 /* ここに載っていないオリジンからは叩けない */
 const ALLOWED_ORIGINS = [
@@ -32,41 +41,119 @@ function corsHeaders(origin){
   };
 }
 
+const sseHeaders = h => ({
+  ...h,
+  "content-type": "text/event-stream; charset=utf-8",
+  "cache-control": "no-cache",
+});
+
+/* ---------------- Workers AI ---------------- */
+
+/* Workers AI は data: {"response":"..."} 形式で流してくる。
+   トガメ側（index.html の askAgent）は Anthropic の text_delta 形式を読むので、
+   ここで詰め替える。こうしておけば、提供元を変えてもページ側は一切触らなくていい */
+function toAnthropicSSE(cfStream){
+  const dec = new TextDecoder();
+  const enc = new TextEncoder();
+  let buf = "";
+  return cfStream.pipeThrough(new TransformStream({
+    transform(chunk, ctrl){
+      buf += dec.decode(chunk, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();                     // 行の途中は次の塊まで持ち越す
+      for(const line of lines){
+        const t = line.trim();
+        if(!t.startsWith("data:")) continue;
+        const payload = t.slice(5).trim();
+        if(payload === "[DONE]") continue;
+        let ev;
+        try{ ev = JSON.parse(payload); }catch(e){ continue; }
+        const text = ev.response;
+        /* 最後に usage だけの塊が来る（response が null）ので弾く */
+        if(typeof text !== "string" || text === "") continue;
+        ctrl.enqueue(enc.encode("data: " + JSON.stringify({
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text },
+        }) + "\n\n"));
+      }
+    },
+  }));
+}
+
+async function runWorkersAI(env, system, user, h){
+  if(!env.AI){
+    return new Response("AIバインディングが未設定（wrangler.toml の [ai] を確認）", { status:500, headers:h });
+  }
+  try{
+    const stream = await env.AI.run(CF_MODEL, {
+      messages: [
+        { role: "system", content: system },
+        { role: "user",   content: user },
+      ],
+      max_tokens: 512,
+      stream: true,
+    });
+    return new Response(toAnthropicSSE(stream), { headers: sseHeaders(h) });
+  }catch(e){
+    /* 設定画面のテストボタンで中身が見えるように、そのまま返す */
+    return new Response("Workers AI エラー: " + ((e && e.message) || e), { status:500, headers:h });
+  }
+}
+
+/* ---------------- Anthropic（戻したいとき用） ---------------- */
+
 function anthropicHeaders(env){
   const h = {
     "content-type": "application/json",
     "x-api-key": env.ANTHROPIC_API_KEY.trim(),
     "anthropic-version": "2023-06-01",
   };
-  /* 安全側の判定で断られた時に別モデルへ逃がす仕組み。上位モデルのみ */
   if(IS_FRONTIER) h["anthropic-beta"] = "server-side-fallback-2026-07-01";
   return h;
 }
 
-function buildPayload(system, user){
+function anthropicPayload(system, user){
   const p = {
-    model: MODEL,
+    model: ANTHROPIC_MODEL,
     max_tokens: 1000,
     stream: true,
     system,
     messages: [{ role: "user", content: user }],
   };
   if(IS_FRONTIER){
-    /* ひとことを返すだけなので思考は浅くていい。速さがそのまま体験になる */
     p.output_config = { effort: "low" };
     p.fallbacks = "default";
   }
   return p;
 }
 
+async function runAnthropic(env, system, user, h){
+  if(!env.ANTHROPIC_API_KEY){
+    return new Response("ANTHROPIC_API_KEY が未設定", { status:500, headers:h });
+  }
+  const upstream = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: anthropicHeaders(env),
+    body: JSON.stringify(anthropicPayload(system, user)),
+  });
+  if(!upstream.ok){
+    return new Response(await upstream.text(), {
+      status: upstream.status,
+      headers: { ...h, "content-type": "application/json" },
+    });
+  }
+  return new Response(upstream.body, { headers: sseHeaders(h) });
+}
+
+/* ---------------- 入口 ---------------- */
+
 export default {
   async fetch(req, env){
     const h = corsHeaders(req.headers.get("origin") || "");
 
     if(req.method === "OPTIONS") return new Response(null, { status:204, headers:h });
-
     if(req.method !== "POST")    return new Response("POSTだけ", { status:405, headers:h });
-    if(!env.ANTHROPIC_API_KEY)   return new Response("ANTHROPIC_API_KEY が未設定", { status:500, headers:h });
     if(req.headers.get("x-togame-key") !== env.TOGAME_SECRET)
       return new Response("合言葉が違う", { status:401, headers:h });
 
@@ -78,23 +165,8 @@ export default {
     const user   = String(body.user   || "").slice(0, 8000);
     if(!user) return new Response("userが空", { status:400, headers:h });
 
-    const upstream = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: anthropicHeaders(env),
-      body: JSON.stringify(buildPayload(system, user)),
-    });
-
-    /* エラーはそのまま返す。設定画面のテストボタンで中身が見えるように */
-    if(!upstream.ok){
-      return new Response(await upstream.text(), {
-        status: upstream.status,
-        headers: { ...h, "content-type": "application/json" },
-      });
-    }
-
-    /* SSEをそのまま流す */
-    return new Response(upstream.body, {
-      headers: { ...h, "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache" },
-    });
+    return PROVIDER === "anthropic"
+      ? runAnthropic(env, system, user, h)
+      : runWorkersAI(env, system, user, h);
   },
 };
