@@ -511,7 +511,9 @@ settings.agent = Object.assign({}, DEFAULT_SETTINGS.agent, settings.agent);
 let events = LS.get("nh_events", []);           // {t, app, reason, kind:"open"|"resist"}
 let lastAllowed = LS.get("nh_last", {});        // {appId: epoch ms}
 let recentLines = LS.get("nh_lines", []);       // 直近に言われたセリフ（毎回ちがうことを言わせるため）
-let agentCount = LS.get("nh_agentcount", {});   // {日付: 回数} APIは従量課金なので1日の上限を持つ
+let agentCount = LS.get("nh_agentcount", {});
+let lastAngle  = LS.get("nh_angle", "");    // 直前に使った切り口（連続で同じにしない）
+let calCache   = LS.get("nh_cal", null);    // {day, text} ショートカットから受け取った今日の予定   // {日付: 回数} APIは従量課金なので1日の上限を持つ
 
 function saveSettings(){ LS.set("nh_settings", settings); }
 function saveEvents(){ LS.set("nh_events", events); }
@@ -589,8 +591,14 @@ function toast(msg){
 }
 
 /* 「本来なら」換算文 */
-function couldHaveText(totalMin){
-  const items = [...settings.conversions].sort((a,b)=>b.min-a.min).filter(c=>c.min>0);
+/* 収まる項目の中から選ぶ。分数の大きい順に決め打ちだと、同じ理由では毎回
+   同じ項目しか出てこず「SPIの話しかされない」状態になるので、
+   収まるものをシャッフルしてから詰める */
+function couldHaveText(totalMin, shuffle){
+  let items = settings.conversions.filter(c=>c.min>0 && c.min<=totalMin);
+  items = shuffle
+    ? items.map(c=>[Math.random(), c]).sort((a,b)=>a[0]-b[0]).map(x=>x[1])
+    : [...items].sort((a,b)=>b.min-a.min);
   let rest = totalMin;
   const done = [];
   for(const it of items){
@@ -603,6 +611,19 @@ function couldHaveText(totalMin){
     }
   }
   return done;
+}
+
+/* ショートカットから ?cal=... で渡された今日の予定を覚えておく。
+   カレンダーAPIのOAuthを組まずに済ませるための経路。日付が変わったら捨てる */
+function captureCalendar(raw){
+  if(raw == null) return;
+  const text = String(raw).trim().slice(0, 600);
+  calCache = text ? { day: todayKey(), text } : null;
+  if(calCache) LS.set("nh_cal", calCache);
+  else try{ localStorage.removeItem("nh_cal"); }catch(e){}
+}
+function todaysCalendar(){
+  return (calCache && calCache.day === todayKey() && calCache.text) ? calCache.text : "";
 }
 
 /* ================= エージェント ================= */
@@ -678,21 +699,44 @@ function agentSystem(){
 }
 
 /* いま何が起きているかを、事実だけ渡す */
+/* 毎回ちがう切り口を1つ指定する。以前は「直前に言ったこと」を見せて避けさせて
+   いたが、実験したら逆効果で、見せた型をそのまま真似て毎回そっくりな文に
+   なっていた。見せずに角度だけ変える方が散る */
+const ANGLES = [
+  "今日すでに何回開いているか、その回数に触れる。",
+  "いまの時刻そのものに触れる（こんな時間に、まだ早いのに、など）。",
+  "開かずに引き返せた回数に触れて、そこを認める。",
+  "同じ時間で他にできたはずのことに触れる。",
+  "選んだ理由そのものに触れて、短く突っ込む。",
+  "今日の合計時間に触れる。",
+  "今日のこの先の予定や締切に触れる。",
+];
+
 function followupPrompt(appId, reason){
   const todayAll = eventsOn(todayKey());
   const todayEvs = todayAll.filter(e=>e.app===appId);
   const nth      = todayEvs.filter(e=>e.kind==="open").length;
   const resists  = todayAll.filter(e=>e.kind==="resist").length;
   const now      = new Date();
-  const alt      = couldHaveText(settings.reasonMinutes[reason] || 0);
+  const alt      = couldHaveText(settings.reasonMinutes[reason] || 0, true);
+  const cal      = todaysCalendar();
+
+  /* 予定が無いときは予定の切り口を外す。直前と同じ角度も続けない */
+  let pool = ANGLES.filter(a => cal ? true : !a.includes("予定"));
+  if(pool.length > 1) pool = pool.filter(a => a !== lastAngle);
+  const angle = pool[Math.floor(Math.random() * pool.length)];
+  lastAngle = angle;
+  LS.set("nh_angle", angle);
+
   return [
     `いま ${appName(appId)} を開こうとして、理由に「${R[reason].label}」を選んだところ。`,
     `時刻は${now.getHours()}時${String(now.getMinutes()).padStart(2,"0")}分。`,
     `${appName(appId)}は今日${nth}回目。${appName(appId)}に今日${estMinutes(todayEvs)}分、SNS全体で${estMinutes(todayAll)}分。`,
     resists ? `今日は${resists}回、開かずに引き返している。` : "",
     alt.length ? `この人が「同じ時間があればできたのに」と自分で登録しているのは: ${alt.join("、")}。` : "",
-    recentLines.length ? `\n直前に言ったこと（同じ言い回しは避ける）:\n- ${recentLines.slice(-3).join("\n- ")}` : "",
-    "\nこの人に、ひとこと。",
+    cal ? `今日のこの先の予定: ${cal}` : "",
+    `\n今回の切り口: ${angle}`,
+    "この人に、ひとこと。",
   ].filter(Boolean).join("\n");
 }
 
@@ -1408,9 +1452,9 @@ function renderSettings(){
   });
 
   /* minutes & grace */
-  $app.querySelectorAll("[data-rmin]").forEach(inp=>inp.addEventListener("change", ()=>{
+  $app.querySelectorAll("[data-rmin]").forEach(inp=>["change","input"].forEach(evt=>inp.addEventListener(evt, ()=>{
     settings.reasonMinutes[inp.dataset.rmin] = Math.max(0, Number(inp.value)||0); saveSettings();
-  }));
+  })));
   document.getElementById("grace").addEventListener("change", e=>{
     settings.graceMin = Math.max(1, Number(e.target.value)||5); saveSettings();
   });
@@ -1447,12 +1491,14 @@ function renderSettings(){
   });
 
   /* conversions */
-  $app.querySelectorAll("[data-cname]").forEach(inp=>inp.addEventListener("change", ()=>{
+  /* changeはフォーカスを外すまで発火しない。書き換えた直後に画面を離れると
+     保存されず「変えたのに反映されない」ので、inputでも拾う */
+  $app.querySelectorAll("[data-cname]").forEach(inp=>["change","input"].forEach(evt=>inp.addEventListener(evt, ()=>{
     settings.conversions[Number(inp.dataset.cname)].name = inp.value.trim(); saveSettings();
-  }));
-  $app.querySelectorAll("[data-cmin]").forEach(inp=>inp.addEventListener("change", ()=>{
+  })));
+  $app.querySelectorAll("[data-cmin]").forEach(inp=>["change","input"].forEach(evt=>inp.addEventListener(evt, ()=>{
     settings.conversions[Number(inp.dataset.cmin)].min = Math.max(1, Number(inp.value)||1); saveSettings();
-  }));
+  })));
   $app.querySelectorAll("[data-cdel]").forEach(b=>b.addEventListener("click", ()=>{
     settings.conversions.splice(Number(b.dataset.cdel),1); saveSettings(); renderSettings();
   }));
@@ -1491,8 +1537,10 @@ function renderSettings(){
         localStorage.removeItem("nh_last");
         localStorage.removeItem("nh_lines");
         localStorage.removeItem("nh_agentcount");
+        localStorage.removeItem("nh_cal");
+        localStorage.removeItem("nh_angle");
         settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        events = []; lastAllowed = {}; recentLines = []; agentCount = {};
+        events = []; lastAllowed = {}; recentLines = []; agentCount = {}; calCache = null; lastAngle = "";
         toast("全部消した");
         swap(renderDashboard);
       },
@@ -1521,6 +1569,7 @@ function renderGrace(appId){
 (function main(){
   const p = new URLSearchParams(location.search);
   const appId = p.get("app");
+  captureCalendar(p.get("cal"));
   if(appId){
     const allowed = lastAllowed[appId];
     if(allowed && Date.now() - allowed < settings.graceMin * 60000){
