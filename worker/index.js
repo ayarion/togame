@@ -53,23 +53,28 @@ const sseHeaders = h => ({
    トガメ側（index.html の askAgent）は Anthropic の text_delta 形式を読むので、
    ここで詰め替える。こうしておけば、提供元を変えてもページ側は一切触らなくていい */
 function toAnthropicSSE(cfStream){
-  const dec = new TextDecoder();
   const enc = new TextEncoder();
   let buf = "";
   return cfStream.pipeThrough(new TransformStream({
     transform(chunk, ctrl){
-      buf += dec.decode(chunk, { stream: true });
+      /* 実測: env.AI.run(...,{stream:true}) のチャンクは1回のreadで完結した行で届く。
+         にもかかわらず持続デコーダー(TextDecoder+{stream:true})を挟むと日本語が
+         壊れる現象を確認したため、チャンク単位で使い捨てデコードする。
+         Workers AIはモデルによって {"response":"..."} 形式と
+         OpenAI互換の {"choices":[{"delta":{"content":"..."}}]} 形式のどちらかで
+         返すため、両対応しておく */
+      buf += new TextDecoder().decode(chunk);
       const lines = buf.split("\n");
       buf = lines.pop();                     // 行の途中は次の塊まで持ち越す
       for(const line of lines){
         const t = line.trim();
         if(!t.startsWith("data:")) continue;
         const payload = t.slice(5).trim();
-        if(payload === "[DONE]") continue;
+        if(payload === "[DONE]" || !payload) continue;
         let ev;
         try{ ev = JSON.parse(payload); }catch(e){ continue; }
-        const text = ev.response;
-        /* 最後に usage だけの塊が来る（response が null）ので弾く */
+        const text = (ev.response != null) ? ev.response
+          : (ev.choices && ev.choices[0] && ev.choices[0].delta ? ev.choices[0].delta.content : undefined);
         if(typeof text !== "string" || text === "") continue;
         ctrl.enqueue(enc.encode("data: " + JSON.stringify({
           type: "content_block_delta",
@@ -155,6 +160,7 @@ export default {
     const h = corsHeaders(req.headers.get("origin") || "");
 
     if(req.method === "OPTIONS") return new Response(null, { status:204, headers:h });
+
     if(req.method !== "POST")    return new Response("POSTだけ", { status:405, headers:h });
     if(req.headers.get("x-togame-key") !== env.TOGAME_SECRET)
       return new Response("合言葉が違う", { status:401, headers:h });
