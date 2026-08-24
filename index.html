@@ -118,6 +118,7 @@
   /* AIの一言が見出しそのものになる。届くまでは点を出しておき、
      失敗したら固定のセリフに差し替わる（見出しが空のままにならないように） */
   .followup h1.agent-h1{min-height:1.5em;white-space:pre-wrap}
+  .followup .agent-note{margin-top:10px;font-size:12px;color:var(--r-hima);line-height:1.7}
   .followup .thinking::after{
     content:"";display:inline-block;width:9px;height:9px;border-radius:50%;
     background:var(--ink-3);animation:agent-pulse 1.1s ease-in-out infinite;vertical-align:middle;
@@ -709,14 +710,14 @@ async function runAgentLine(appId, reason){
   if(!el || !agentAvailable()) return;
   bumpAgentCount();
   el.classList.add("thinking");
-  let got = "";
+  let got = "", err = "";
   try{
     got = await askAgent({
       system: agentSystem(),
       user: followupPrompt(appId, reason),
       onDelta(_d, all){ el.classList.remove("thinking"); el.textContent = all; },
     }) || "";
-  }catch(e){ got = ""; }
+  }catch(e){ got = ""; err = String((e && e.message) || e).slice(0, 120); }
   el.classList.remove("thinking");
 
   if(got){
@@ -724,9 +725,15 @@ async function runAgentLine(appId, reason){
     recentLines.push(got);
     saveLines();
   }else{
-    /* 届かなかったら見出しが空になってしまうので、固定のセリフに落とす */
+    /* 届かなかったら見出しが空になるので固定のセリフに落とす。ただし黙って
+       落とすと「AIの出来が悪い」ように見えてしまうので、落ちたことを明示する */
     el.textContent = FU[reason].line;
     el.classList.remove("agent-h1");
+    const note = document.getElementById("agent-note");
+    if(note){
+      note.textContent = err ? ("AIに届かなかった: " + err) : "AIに届かなかった（固定の文を表示中）";
+      note.hidden = false;
+    }
   }
 }
 
@@ -812,7 +819,8 @@ function renderFollowup(appId, reason){
     <div class="followup screen-rise">
       <span class="reason-tag"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
       ${useAgent
-        ? `<h1 class="agent-h1 thinking" id="agent-line" aria-live="polite"></h1>`
+        ? `<h1 class="agent-h1 thinking" id="agent-line" aria-live="polite"></h1>
+           <p class="agent-note" id="agent-note" hidden></p>`
         : `<h1>${esc(fu.line)}</h1>`}
       ${altLine ? `<p class="alt">${esc(altLine)}</p>` : ""}
       <div class="fu-actions">
