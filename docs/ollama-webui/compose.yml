@@ -1,0 +1,31 @@
+# Ollama + Open WebUI をまとめて動かす標準構成（CPU / NVIDIA GPU 共通のベース）
+# 起動:  docker compose up -d
+# 画面:  http://localhost:3000
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      # ホストから直接APIを叩きたくないなら、この2行は消してよい
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      # 左がPCで開くポート、右がコンテナ内のポート（WebUIは中では8080）
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  ollama:
+  open-webui:

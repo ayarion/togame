@@ -1,0 +1,19 @@
+# macOS（Apple Silicon）向け
+# Docker内のOllamaはMacのGPUを使えず激遅になるため、Ollama本体はMacに直接入れて動かし、
+# WebUIだけDockerで動かす。Ollamaは公式サイトのアプリ版か brew install ollama で入れる。
+# 起動:  docker compose -f compose.mac.yml up -d
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      # コンテナからMac本体のOllamaを見に行く
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:
