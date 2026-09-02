@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ja" data-skin="a" data-screen="intercept">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>トガメ 介入画面 VB風モック</title>
+<style>
+  /* ==========================================================
+     介入画面だけをVB6/Win95風に振ったモック。本体(index.html)には触れていない。
+     A案=ガチのVB6 / B案=ハイブリッド の2枚を同じマークアップで切り替える。
+     アニメーションは本体の作り込み（カスタムイージング・入場の出し分け）を維持する。
+     ========================================================== */
+
+  :root{
+    /* 本体から持ち込む。ここは両案共通 */
+    --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  /* ---------- A案: ガチのVB6 ----------
+     背景はWin95のティール。面は#c0c0c0。角丸ゼロ。色は16色パレットから選ぶ */
+  :root[data-skin="a"]{
+    --page-bg:#008080;
+    --face:#c0c0c0;
+    --field:#ffffff;
+    --ink:#000000;
+    --ink-2:#000000;
+    --ink-3:#404040;
+    --accent:#000080;
+    --title-a:#000080;
+    --title-b:#1084d0;
+    /* 凹凸の4色。外側の明暗と内側の明暗で2層作ると本物の厚みになる */
+    --lt-out:#ffffff;
+    --lt-in:#dfdfdf;
+    --dk-out:#404040;
+    --dk-in:#808080;
+    --radius:0px;
+    /* 理由の色。16色に丸めても赤系／青系の対比は保つ */
+    --r-hima:#ff0000;
+    --r-tohi:#800000;
+    --r-shirabe:#0000ff;
+    --r-work:#00ffff;
+    --base-font:13px;
+    --h1-size:20px;
+  }
+
+  /* ---------- B案: ハイブリッド ----------
+     凹凸と角ばりだけVBから借りて、本体の白基調・赤青の意味づけ・文字サイズは守る */
+  :root[data-skin="b"]{
+    --page-bg:#eceef1;
+    --face:#ffffff;
+    --field:#ffffff;
+    --ink:#17171a;
+    --ink-2:#55565c;
+    --ink-3:#8e8f96;
+    --accent:#1c5cab;
+    --title-a:#1c5cab;
+    --title-b:#1c5cab;
+    --lt-out:#ffffff;
+    --lt-in:#ffffff;
+    --dk-out:#c4c7cf;
+    --dk-in:#dcdee4;
+    --radius:3px;
+    --r-hima:#d94a45;
+    --r-tohi:#ef8c86;
+    --r-shirabe:#2f7fd0;
+    --r-work:#8fbcea;
+    --base-font:16px;
+    --h1-size:26px;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--page-bg);min-height:100%}
+  body{
+    color:var(--ink);
+    font-size:var(--base-font);
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  :root[data-skin="a"] body{
+    /* Windows側の実機なら本物のMSゴシックが出る。iOSでは順に落ちてヒラギノになる */
+    font-family:"MS PGothic","ＭＳ Ｐゴシック","MS UI Gothic","Osaka","Hiragino Sans",sans-serif;
+    line-height:1.55;
+  }
+  :root[data-skin="b"] body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+  }
+
+  /* ---------- 凹凸のユーティリティ ----------
+     参照スライドの vb-raised / vb-sunken を素のCSSで組む。
+     Tailwindもビルドも要らない。borderの4辺を明暗で塗り分けるだけ */
+  .raised{
+    border:2px solid;
+    border-color:var(--lt-out) var(--dk-out) var(--dk-out) var(--lt-out);
+    box-shadow:inset 1px 1px 0 var(--lt-in), inset -1px -1px 0 var(--dk-in);
+    background:var(--face);
+    border-radius:var(--radius);
+  }
+  .sunken{
+    border:2px solid;
+    border-color:var(--dk-out) var(--lt-out) var(--lt-out) var(--dk-out);
+    box-shadow:inset 1px 1px 0 var(--dk-in), inset -1px -1px 0 var(--lt-in);
+    background:var(--field);
+    border-radius:var(--radius);
+  }
+  /* 押している間だけ枠を反転させ、中身を右下へ1pxずらす */
+  .press:active{
+    border-color:var(--dk-out) var(--lt-out) var(--lt-out) var(--dk-out);
+    box-shadow:inset 1px 1px 0 var(--dk-in), inset -1px -1px 0 var(--lt-in);
+    padding-top:calc(var(--pad-y) + 1px);
+    padding-left:calc(var(--pad-x) + 1px);
+    padding-bottom:calc(var(--pad-y) - 1px);
+    padding-right:calc(var(--pad-x) - 1px);
+  }
+
+  /* B案の凹凸は2pxの4色ボーダーだと影がズレて見えて浮かない。
+     全周1pxの薄枠に、上辺の白ハイライトと下辺の暗線で厚みを出す方向に振る */
+  :root[data-skin="b"] .raised{
+    border:1px solid #e4e6eb;
+    border-bottom-color:#d2d5dd;
+    box-shadow:inset 0 1px 0 #ffffff, 0 1px 1px rgba(20,20,25,.045);
+  }
+  :root[data-skin="b"] .press:active{
+    border-color:#d2d5dd #e4e6eb #e4e6eb #e4e6eb;
+    box-shadow:inset 0 2px 3px rgba(20,20,25,.10);
+  }
+  :root[data-skin="b"] .sunken{
+    border:1px solid #dcdee4;
+    box-shadow:inset 0 1px 2px rgba(20,20,25,.06);
+  }
+
+  /* ---------- ウィンドウ ---------- */
+  .win-wrap{
+    max-width:520px;margin:0 auto;
+    padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  }
+  :root[data-skin="b"] .win-wrap{padding-left:10px;padding-right:10px}
+  .win{display:flex;flex-direction:column}
+  :root[data-skin="b"] .win{
+    /* B案はウィンドウ然とさせず、影を一段だけ置いて紙に見せる */
+    box-shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+  }
+
+  .titlebar{
+    display:flex;align-items:center;gap:6px;
+    padding:3px 3px 3px 5px;margin:2px;
+    background:linear-gradient(90deg,var(--title-a),var(--title-b));
+    color:#fff;font-size:12px;font-weight:700;letter-spacing:.02em;
+  }
+  :root[data-skin="b"] .titlebar{
+    margin:0;padding:11px 14px;background:none;
+    color:var(--ink-3);font-size:11px;font-weight:600;letter-spacing:.14em;
+    border-bottom:1px solid #eceef1;
+  }
+  .tb-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-btns{display:flex;gap:2px;flex:none}
+  .tb-btn{
+    width:18px;height:16px;display:grid;place-items:center;
+    font-size:10px;font-weight:700;color:#000;line-height:1;
+    --pad-x:0px;--pad-y:0px;
+  }
+  /* B案でタイトルバーのボタンは出さない。介入画面に閉じる手段があると趣旨が壊れる */
+  :root[data-skin="b"] .tb-btns{display:none}
+
+  .win-body{padding:16px 14px}
+  :root[data-skin="b"] .win-body{padding:26px 22px 22px}
+
+  .statusbar{
+    display:flex;align-items:center;gap:6px;
+    margin:0 2px 2px;padding:2px 6px;min-height:20px;
+    font-size:11px;color:var(--ink-2);background:var(--face);
+  }
+  .statusbar .grip{
+    margin-left:auto;width:12px;height:12px;flex:none;
+    background:
+      linear-gradient(135deg,transparent 45%,var(--dk-in) 45%,var(--dk-in) 55%,transparent 55%),
+      linear-gradient(135deg,transparent 70%,var(--dk-in) 70%,var(--dk-in) 80%,transparent 80%);
+  }
+  /* B案にステータスバーとフレームの溝は要らない */
+  :root[data-skin="b"] .vb-only{display:none}
+
+  /* ---------- 入場アニメーション（本体の設計をそのまま持ってくる） ----------
+     問い詰め画面は毎日何十回出るのでフェードのみ150ms。
+     選択後の画面は250msのrise。ここはVB6にしても捨てない */
+  .intercept{opacity:1;transition:opacity 150ms var(--ease-out)}
+  @starting-style{.intercept{opacity:0}}
+  .screen-rise{
+    opacity:1;transform:translateY(0);
+    transition:opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+  }
+  @starting-style{.screen-rise{opacity:0;transform:translateY(8px)}}
+
+  /* ---------- 見出し ---------- */
+  .eyebrow{
+    font-size:11px;letter-spacing:.14em;color:var(--ink-3);font-weight:600;
+    margin-bottom:8px;
+  }
+  :root[data-skin="b"] .eyebrow{font-size:12px;margin-bottom:10px}
+  h1{
+    font-size:var(--h1-size);font-weight:700;line-height:1.4;
+    letter-spacing:-0.01em;text-wrap:balance;word-break:auto-phrase;
+    margin-bottom:16px;
+  }
+  :root[data-skin="b"] h1{line-height:1.35;margin-bottom:22px}
+
+  /* ---------- フレーム（VB6のグループボックス） ---------- */
+  .frame{
+    border:none;position:relative;
+    margin:0 0 14px;padding:14px 10px 10px;
+  }
+  :root[data-skin="a"] .frame{
+    border:1px solid var(--dk-in);
+    border-right-color:var(--lt-out);border-bottom-color:var(--lt-out);
+    margin-top:8px;
+  }
+  .frame > legend{
+    font-size:12px;font-weight:700;padding:0 4px;color:var(--ink);
+    background:var(--face);
+  }
+  :root[data-skin="b"] .frame{padding:0;margin-bottom:0}
+  :root[data-skin="b"] .frame > legend{display:none}
+
+  /* ---------- 理由の選択肢 ----------
+     押しやすさは案を問わず死守する。VB6の詰まった余白のままだと指が滑るので
+     見た目の高さは詰めても当たり判定は48px以上を確保する */
+  .choices{display:flex;flex-direction:column;gap:6px}
+  :root[data-skin="b"] .choices{gap:10px}
+  .choice{
+    --pad-x:12px;--pad-y:10px;
+    display:flex;align-items:center;gap:12px;
+    width:100%;min-height:48px;padding:var(--pad-y) var(--pad-x);
+    text-align:left;font:inherit;color:var(--ink);cursor:pointer;
+    font-size:15px;font-weight:700;
+    -webkit-tap-highlight-color:transparent;
+  }
+  :root[data-skin="b"] .choice{
+    --pad-x:16px;--pad-y:14px;
+    min-height:56px;font-size:17px;
+    background:linear-gradient(#ffffff,#f7f8fa);
+  }
+  .dot{width:12px;height:12px;flex:none;border:1px solid #000}
+  :root[data-skin="b"] .dot{width:10px;height:10px;border:none;border-radius:50%}
+  .d-hima{background:var(--r-hima)}
+  .d-tohi{background:var(--r-tohi)}
+  .d-shirabe{background:var(--r-shirabe)}
+  .d-work{background:var(--r-work)}
+  .choice .key{
+    margin-left:auto;font-size:11px;color:var(--ink-3);font-weight:400;
+  }
+  :root[data-skin="b"] .choice .key{display:none}
+
+  .context-line{margin-top:14px;font-size:12px;color:var(--ink-3)}
+  :root[data-skin="b"] .context-line{margin-top:24px;font-size:13px}
+
+  /* ---------- 返しの画面 ---------- */
+  .reason-tag{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:14px;
+  }
+  :root[data-skin="b"] .reason-tag{font-size:13px;margin-bottom:18px}
+  /* A案ではAIの一言を沈んだ白地に置く。当時のラベル表示そのもの */
+  :root[data-skin="a"] .say{padding:12px 12px;margin-bottom:12px}
+  :root[data-skin="a"] .say h1{margin-bottom:0}
+  :root[data-skin="b"] .say{border:none;box-shadow:none;background:none;padding:0}
+  .alt{color:var(--ink-3);font-size:12px;margin-bottom:4px}
+  :root[data-skin="b"] .alt{font-size:13px}
+
+  .fu-actions{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+  :root[data-skin="b"] .fu-actions{gap:14px;margin-top:36px}
+  .btn{
+    --pad-x:14px;--pad-y:12px;
+    width:100%;min-height:48px;padding:var(--pad-y) var(--pad-x);
+    font:inherit;font-size:15px;font-weight:700;color:var(--ink);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  :root[data-skin="b"] .btn{--pad-y:16px;min-height:56px;font-size:17px}
+  /* 主ボタン。A案はVB6の既定ボタン（黒い縁取り）で主従を出す。
+     B案は本体どおり青ベタのまま、内側の明暗で厚みだけ足す */
+  :root[data-skin="a"] .btn-primary{outline:1px solid #000;outline-offset:0}
+  :root[data-skin="b"] .btn-primary{
+    background:var(--accent);color:#fff;
+    border:1px solid #17509a;border-bottom-color:#0e3a72;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(14,58,114,.25);
+  }
+  :root[data-skin="b"] .btn-primary:active{
+    border-color:#0e3a72;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.22);
+  }
+  /* 副ボタン。B案は本体どおり下線のリンク調に落として主従を明確にする */
+  :root[data-skin="b"] .btn-quiet{
+    border:none;box-shadow:none;background:none;
+    min-height:44px;padding:10px;
+    color:var(--ink-3);font-size:14px;font-weight:400;
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  :root[data-skin="b"] .btn-quiet:active{padding:10px;opacity:.6}
+
+  /* ---------- 引き返した画面 ---------- */
+  .done .big{
+    font-size:44px;font-weight:700;color:var(--accent);line-height:1;
+    margin-bottom:14px;
+  }
+  :root[data-skin="a"] .done .big{
+    /* 当時のカウンタ表示。数字だけ沈ませる */
+    display:inline-block;padding:4px 14px;background:#fff;color:#000080;
+    font-family:"Courier New",monospace;
+  }
+  :root[data-skin="b"] .done .big{font-size:56px;margin-bottom:20px}
+  .done p{color:var(--ink-2);margin-bottom:18px}
+  .done .btn{margin-top:4px}
+
+  /* ---------- モック操作バー（本体には入れない。見比べるための足場） ---------- */
+  .mockbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    padding:8px 10px;background:#17171a;color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Segoe UI",sans-serif;
+    font-size:12px;line-height:1.4;
+  }
+  .mockbar .sep{width:1px;height:18px;background:#3a3a40;margin:0 4px}
+  .mockbar .lbl{color:#8e8f96;font-size:11px;letter-spacing:.08em}
+  .mockbar button{
+    font:inherit;font-size:12px;padding:6px 10px;min-height:32px;
+    border:1px solid #3a3a40;border-radius:4px;background:#232329;color:#c9ccd3;
+    cursor:pointer;
+  }
+  .mockbar button[aria-pressed="true"]{background:#fff;color:#17171a;border-color:#fff;font-weight:700}
+  body.embed .mockbar{display:none}
+
+  /* 並べて比較 */
+  .compare{display:none;gap:10px;padding:10px;background:#17171a;min-height:100vh}
+  body.compare-on .compare{display:flex}
+  body.compare-on .stage{display:none}
+  .compare .pane{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .compare .pane > span{
+    color:#c9ccd3;font-size:11px;letter-spacing:.08em;text-align:center;
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  }
+  .compare iframe{width:100%;flex:1;border:0;background:#fff;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="mockbar">
+  <span class="lbl">案</span>
+  <button data-skin-btn="a">A ガチVB6</button>
+  <button data-skin-btn="b">B ハイブリッド</button>
+  <span class="sep"></span>
+  <span class="lbl">画面</span>
+  <button data-screen-btn="intercept">問い詰め</button>
+  <button data-screen-btn="followup">返し</button>
+  <button data-screen-btn="done">引き返した</button>
+  <span class="sep"></span>
+  <button id="cmp">並べて見る</button>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<div class="compare">
+  <div class="pane"><span>A ガチVB6</span><iframe id="fa"></iframe></div>
+  <div class="pane"><span>B ハイブリッド</span><iframe id="fb"></iframe></div>
+</div>
+
+<template id="t-intercept">
+  <div class="win-wrap">
+    <div class="win raised intercept">
+      <div class="titlebar">
+        <span class="tb-title">トガメ - 起動確認</span>
+        <span class="tb-btns">
+          <button class="tb-btn raised press min" tabindex="-1">_</button>
+          <button class="tb-btn raised press max" tabindex="-1">□</button>
+          <button class="tb-btn raised press" tabindex="-1">×</button>
+        </span>
+      </div>
+      <div class="win-body">
+        <p class="eyebrow">INSTAGRAM を開こうとしています</p>
+        <h1>なんで開いたの？</h1>
+        <fieldset class="frame">
+          <legend>【理由】</legend>
+          <div class="choices">
+            <button class="choice raised press"><span class="dot d-hima"></span>暇つぶし<span class="key">Alt+H</span></button>
+            <button class="choice raised press"><span class="dot d-tohi"></span>逃避<span class="key">Alt+T</span></button>
+            <button class="choice raised press"><span class="dot d-shirabe"></span>調べもの<span class="key">Alt+S</span></button>
+            <button class="choice raised press"><span class="dot d-work"></span>勉強や仕事<span class="key">Alt+W</span></button>
+          </div>
+        </fieldset>
+        <p class="context-line">今日3回目。ここまでInstagramだけで18分、SNS全体で41分（推定）。</p>
+      </div>
+      <div class="statusbar sunken vb-only">
+        <span>理由を選択してください。</span>
+        <span class="grip"></span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-followup">
+  <div class="win-wrap">
+    <div class="win raised screen-rise">
+      <div class="titlebar">
+        <span class="tb-title">トガメ - 確認</span>
+        <span class="tb-btns">
+          <button class="tb-btn raised press min" tabindex="-1">_</button>
+          <button class="tb-btn raised press max" tabindex="-1">□</button>
+          <button class="tb-btn raised press" tabindex="-1">×</button>
+        </span>
+      </div>
+      <div class="win-body">
+        <span class="reason-tag"><span class="dot d-hima"></span>暇つぶし</span>
+        <div class="say sunken">
+          <h1>暇なら、それは自由時間ってこと。</h1>
+        </div>
+        <p class="alt">いつもの1回ぶん（約12分）があれば、本を1章読むことができる。</p>
+        <div class="fu-actions">
+          <button class="btn btn-primary raised press">やめておく</button>
+          <button class="btn btn-quiet raised press">それでも開く</button>
+        </div>
+      </div>
+      <div class="statusbar sunken vb-only">
+        <span>選択を待っています。</span>
+        <span class="grip"></span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-done">
+  <div class="win-wrap">
+    <div class="win raised screen-rise">
+      <div class="titlebar">
+        <span class="tb-title">トガメ - 完了</span>
+        <span class="tb-btns">
+          <button class="tb-btn raised press min" tabindex="-1">_</button>
+          <button class="tb-btn raised press max" tabindex="-1">□</button>
+          <button class="tb-btn raised press" tabindex="-1">×</button>
+        </span>
+      </div>
+      <div class="win-body done">
+        <div class="big">3</div>
+        <h1>引き返した。今日3回目のえらい。</h1>
+        <p>このままホーム画面に戻ろう。</p>
+        <button class="btn raised press btn-quiet">今日のまとめを見る →</button>
+      </div>
+      <div class="statusbar sunken vb-only">
+        <span>記録しました。</span>
+        <span class="grip"></span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const $ = s => document.querySelector(s);
+  const root = document.documentElement;
+  const stage = $("#stage");
+  const q = new URLSearchParams(location.search);
+
+  if(q.get("embed") === "1") document.body.classList.add("embed");
+
+  function render(){
+    const id = "#t-" + root.dataset.screen;
+    // テンプレートを差し込み直すことで、@starting-style の入場アニメを毎回発火させる
+    stage.replaceChildren(document.querySelector(id).content.cloneNode(true));
+    document.querySelectorAll("[data-skin-btn]").forEach(b=>{
+      b.setAttribute("aria-pressed", String(b.dataset.skinBtn === root.dataset.skin));
+    });
+    document.querySelectorAll("[data-screen-btn]").forEach(b=>{
+      b.setAttribute("aria-pressed", String(b.dataset.screenBtn === root.dataset.screen));
+    });
+  }
+
+  document.querySelectorAll("[data-skin-btn]").forEach(b=>{
+    b.addEventListener("click", ()=>{ root.dataset.skin = b.dataset.skinBtn; render(); syncFrames(); });
+  });
+  document.querySelectorAll("[data-screen-btn]").forEach(b=>{
+    b.addEventListener("click", ()=>{ root.dataset.screen = b.dataset.screenBtn; render(); syncFrames(); });
+  });
+
+  function syncFrames(){
+    if(!document.body.classList.contains("compare-on")) return;
+    const s = root.dataset.screen;
+    $("#fa").src = `?embed=1&skin=a&screen=${s}`;
+    $("#fb").src = `?embed=1&skin=b&screen=${s}`;
+  }
+  $("#cmp").addEventListener("click", ()=>{
+    document.body.classList.toggle("compare-on");
+    $("#cmp").setAttribute("aria-pressed", String(document.body.classList.contains("compare-on")));
+    syncFrames();
+  });
+
+  if(q.get("skin")) root.dataset.skin = q.get("skin");
+  if(q.get("screen")) root.dataset.screen = q.get("screen");
+  render();
+</script>
+</body>
+</html>
