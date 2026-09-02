@@ -1,0 +1,795 @@
+<!-- コトバ ── トガメの次の形。選択肢を出さず、まず自分の言葉で書かせる。
+     書かれた言葉を端末内のテーブルに貯め、SQLで叩いた結果を根拠として
+     AIに渡し、「通す／通さない／もう少し聞く」を決めさせる。 -->
+<meta charset="utf-8">
+<title>コトバ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23146b3a'/%3E%3Cpath d='M8 12h16M8 17h11' stroke='%23f2fbf6' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='23' cy='22' r='2' fill='%23f2fbf6'/%3E%3C/svg%3E">
+
+<style>
+  :root{
+    --bg:#ffffff; --page-bg:#eceef1;
+    --ink:#17171a; --ink-2:#55565c; --ink-3:#8e8f96;
+    --hairline:#e8e8ec; --hairline-2:#f2f2f5;
+    --accent:#1c5cab; --accent-deep:#0e3a72; --accent-soft:#eef4fc;
+    --stop:#c0403b; --stop-soft:#fdeceb;
+    --go:#1f6b3f; --go-soft:#e9f5ee;
+    --ask:#8a6100; --ask-soft:#fdf3e0;
+    --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--page-bg)}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    color:var(--ink); font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:520px;margin:0 auto;padding:0 24px calc(48px + env(safe-area-inset-bottom));min-height:100vh}
+  .eyebrow{font-size:12px;letter-spacing:.14em;color:var(--ink-3);font-weight:600}
+  h1{font-size:26px;font-weight:700;line-height:1.4;letter-spacing:-0.01em;text-wrap:balance;word-break:auto-phrase}
+  h2{font-size:16px;font-weight:700;margin-bottom:12px}
+  p{color:var(--ink-2)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 160ms var(--ease-out)}
+  button:active{transform:scale(0.97)}
+  button:disabled{opacity:.45;cursor:default}
+  input,textarea,select{font:inherit;color:inherit;width:100%;background:var(--bg);border:1px solid var(--hairline);border-radius:12px;padding:12px 14px}
+  textarea{resize:vertical;line-height:1.7}
+
+  .pad{padding-top:calc(28px + env(safe-area-inset-top))}
+  .card{background:var(--bg);border-radius:18px;padding:20px;margin-bottom:14px}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .btn-primary{background:var(--ink);color:#fff;border-radius:14px;padding:15px 18px;font-weight:700;width:100%}
+  .btn-quiet{background:var(--hairline-2);color:var(--ink);border-radius:14px;padding:15px 18px;font-weight:600;width:100%}
+  .btn-stop{background:var(--stop);color:#fff;border-radius:14px;padding:15px 18px;font-weight:700;width:100%}
+  .link{color:var(--ink-3);font-size:13px;text-decoration:underline;padding:6px 0}
+
+  .compose{min-height:120px;font-size:17px}
+  .meter{display:flex;gap:4px;margin-top:10px}
+  .meter i{height:3px;flex:1;background:var(--hairline);border-radius:2px;transition:background 240ms var(--ease-out)}
+  .meter i.on{background:var(--accent)}
+  .hint{font-size:13px;color:var(--ink-3);margin-top:8px}
+  .turn{border-left:2px solid var(--hairline);padding-left:14px;margin-bottom:14px}
+  .turn .who{font-size:12px;color:var(--ink-3);font-weight:600;letter-spacing:.08em}
+  .turn.mine{border-color:var(--accent)}
+  .verdict{border-radius:14px;padding:14px 16px;margin-bottom:14px;font-weight:600}
+  .v-pass{background:var(--go-soft);color:var(--go)}
+  .v-block{background:var(--stop-soft);color:var(--stop)}
+  .v-ask{background:var(--ask-soft);color:var(--ask)}
+  .thinking{color:var(--ink-3)}
+  .thinking::after{content:"…";animation:dots 1.2s steps(4,end) infinite}
+  @keyframes dots{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
+  .sql{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;background:#14161a;color:#d6e2ee;border-radius:12px;padding:12px 14px;overflow-x:auto;white-space:pre;margin-bottom:8px}
+  .sql b{color:#7fd0a0;font-weight:600}
+  details{margin-top:10px}
+  summary{font-size:13px;color:var(--ink-3);cursor:pointer;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";}
+  details[open] summary::before{content:"▾ ";}
+  .stat{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
+  .stat:last-child{border-bottom:none}
+  .stat b{font-variant-numeric:tabular-nums}
+  .nav{display:flex;gap:18px;padding:20px 0 8px}
+  .nav button{font-size:14px;color:var(--ink-3);font-weight:600}
+  .nav button.on{color:var(--ink)}
+  .toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:all 260ms var(--ease-out)}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  label{display:block;font-size:13px;color:var(--ink-2);margin:14px 0 6px;font-weight:600}
+</style>
+
+<div id="app"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* ============ 保存まわり ============ */
+
+const LS = {
+  get(k, f){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch(e){ return f; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+
+const DEFAULTS = {
+  apps: [
+    { id:"x",  name:"X",         scheme:"twitter://" },
+    { id:"ig", name:"Instagram", scheme:"instagram://" },
+    { id:"yt", name:"YouTube",   scheme:"youtube://" },
+  ],
+  agent: { endpoint:"", secret:"", voice:"", dailyMax:60 },
+  maxTurns: 3,          // 何往復まで聞き返すか
+  graceMin: 5,          // 通したあと何分は素通しにするか
+};
+
+let settings = Object.assign({}, JSON.parse(JSON.stringify(DEFAULTS)), LS.get("kt_settings", {}));
+settings.agent = Object.assign({}, DEFAULTS.agent, settings.agent);
+
+/* entries が「テーブル」。1行＝1回の申告。ここにだけ事実を貯める */
+let entries   = LS.get("kt_entries", []);
+let lastPass  = LS.get("kt_lastpass", {});
+let aiCount   = LS.get("kt_aicount", {});
+
+const saveSettings = () => LS.set("kt_settings", settings);
+const saveEntries  = () => LS.set("kt_entries", entries);
+const saveLastPass = () => LS.set("kt_lastpass", lastPass);
+
+/* ============ 小道具 ============ */
+
+const $app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad2 = n => String(n).padStart(2, "0");
+function dayKey(t){ const d = new Date(t); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+const todayKey = () => dayKey(Date.now());
+const appName = id => (settings.apps.find(a => a.id === id) || {}).name || id;
+
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("on"), 2000);
+}
+
+const aiUsedToday = () => aiCount[todayKey()] || 0;
+function bumpAi(){ aiCount = { [todayKey()]: aiUsedToday() + 1 }; LS.set("kt_aicount", aiCount); }
+
+/* ============ 言葉の解析（端末内・AI不要の下ごしらえ） ============ */
+
+/* 申告文をそのまま持っていても集計できないので、
+   書かれた瞬間に「列」に落としてから行として貯める。
+   SQLで叩けるようにするための正規化にあたる */
+
+const LEX = {
+  purpose: ["調べ","検索","確認","返信","連絡","仕事","課題","締切","投稿","告知","資料","勉強","学","レポート","research","DM"],
+  escape:  ["疲れ","しんど","つら","逃げ","嫌","不安","落ち込","めんど","気まず","焦","現実逃避","やる気"],
+  idle:    ["暇","なんとなく","ひま","つい","惰性","癖","流し","ぼーっと","特に","無意識","とりあえず"],
+  crave:   ["通知","反応","いいね","フォロワー","バズ","気になる","見たい","返事きた","更新"],
+};
+
+function classify(text){
+  const t = String(text);
+  const hit = k => LEX[k].filter(w => t.includes(w)).length;
+  const scores = { purpose:hit("purpose"), escape:hit("escape"), idle:hit("idle"), crave:hit("crave") };
+  let intent = "unclear", best = 0;
+  for(const k in scores) if(scores[k] > best){ best = scores[k]; intent = k; }
+  /* 語彙が引っかからなくても、長く具体的に書けているなら「言語化できている」側に寄せる */
+  if(intent === "unclear" && t.length >= 40) intent = "purpose";
+  return { intent, scores };
+}
+
+/* 具体性スコア。短い・数字がない・固有名詞がない申告は、だいたい後付けの理由 */
+function specificity(text){
+  const t = String(text).trim();
+  let s = 0;
+  if(t.length >= 12) s++;
+  if(t.length >= 30) s++;
+  if(/[0-9０-９]/.test(t)) s++;                                  // 時刻や件数が入っている
+  if(/(ため|から|ので|たい|する|したい|確認|返信|調べ)/.test(t)) s++;  // 動作が書かれている
+  if(/(誰|何|どこ|いつ)/.test(t)) s--;                            // 自問のまま止まっている
+  return Math.max(0, Math.min(4, s));
+}
+
+function makeRow(appId, text, extra){
+  const now = Date.now();
+  const d = new Date(now);
+  const c = classify(text);
+  return Object.assign({
+    id: String(now) + Math.random().toString(36).slice(2, 6),
+    t: now,
+    day: dayKey(now),
+    hour: d.getHours(),
+    wd: d.getDay(),
+    app: appId,
+    text: String(text).trim(),
+    len: String(text).trim().length,
+    intent: c.intent,
+    spec: specificity(text),
+    turns: 1,
+    verdict: "",        // pass | block | ask
+    opened: 0,          // 実際に開いたか
+  }, extra || {});
+}
+
+/* ============ ミニSQL ============ */
+
+/* AIに「なんとなく」ではなく数字で判断させたい。
+   そのためには、渡す事実の出どころを自分で説明できる形にしておく必要がある。
+   ここでは entries を1テーブルとみなし、SELECT / WHERE / GROUP BY / ORDER BY /
+   LIMIT だけを解釈する小さな実行器を置く。設定画面から実際に叩けるので、
+   AIに何を見せているかは全部あとから確認できる */
+
+const AGG = /^(count|sum|avg|min|max)\(([a-z_*]+)\)$/i;
+
+function tokenizeWhere(s){
+  /* 'AND' 区切りだけ。'OR' は使わない（読めなくなる方が損） */
+  return s.split(/\s+and\s+/i).map(x => x.trim()).filter(Boolean);
+}
+
+function parseVal(v){
+  v = v.trim();
+  if(/^'(.*)'$/.test(v)) return v.slice(1, -1);
+  if(/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  if(v === "today") return todayKey();
+  if(v === "now") return Date.now();
+  return v;
+}
+
+function testCond(row, cond){
+  const m = cond.match(/^([a-z_]+)\s*(>=|<=|!=|=|>|<|like)\s*(.+)$/i);
+  if(!m) throw new Error("WHEREが読めない: " + cond);
+  const [, col, op, rawVal] = m;
+  const val = parseVal(rawVal);
+  const cur = row[col];
+  switch(op.toLowerCase()){
+    case "=":  return cur == val;
+    case "!=": return cur != val;
+    case ">":  return cur >  val;
+    case "<":  return cur <  val;
+    case ">=": return cur >= val;
+    case "<=": return cur <= val;
+    case "like": return String(cur).includes(String(val).replace(/%/g, ""));
+  }
+  return false;
+}
+
+function aggregate(rows, col, fn){
+  if(fn === "count") return rows.length;
+  const nums = rows.map(r => Number(r[col])).filter(n => !isNaN(n));
+  if(!nums.length) return 0;
+  if(fn === "sum") return nums.reduce((a, b) => a + b, 0);
+  if(fn === "avg") return Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10;
+  if(fn === "min") return Math.min(...nums);
+  if(fn === "max") return Math.max(...nums);
+  return 0;
+}
+
+function query(sql, rows){
+  const src = rows || entries;
+  const m = String(sql).replace(/;\s*$/, "").match(
+    /^\s*select\s+(.+?)\s+from\s+entries\s*(?:where\s+(.+?))?\s*(?:group\s+by\s+([a-z_]+))?\s*(?:order\s+by\s+([a-z_()*]+)\s*(asc|desc)?)?\s*(?:limit\s+(\d+))?\s*$/i
+  );
+  if(!m) throw new Error("SELECT ... FROM entries の形だけ扱える");
+  const [, colsRaw, whereRaw, groupBy, orderBy, dir, limit] = m;
+
+  let work = src;
+  if(whereRaw){
+    const conds = tokenizeWhere(whereRaw);
+    work = work.filter(r => conds.every(c => testCond(r, c)));
+  }
+
+  const cols = colsRaw.split(",").map(c => c.trim());
+  let out;
+
+  if(groupBy){
+    const buckets = new Map();
+    for(const r of work){
+      const k = r[groupBy];
+      if(!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(r);
+    }
+    out = [...buckets.entries()].map(([k, rs]) => {
+      const o = { [groupBy]: k };
+      for(const c of cols){
+        if(c === groupBy) continue;
+        const a = c.match(AGG);
+        if(a) o[c] = aggregate(rs, a[2], a[1].toLowerCase());
+        else o[c] = rs[0][c];
+      }
+      return o;
+    });
+  }else if(cols.some(c => AGG.test(c))){
+    const o = {};
+    for(const c of cols){
+      const a = c.match(AGG);
+      o[c] = a ? aggregate(work, a[2], a[1].toLowerCase()) : work.length ? work[0][c] : null;
+    }
+    out = [o];
+  }else{
+    out = work.map(r => {
+      if(cols.length === 1 && cols[0] === "*") return r;
+      const o = {};
+      for(const c of cols) o[c] = r[c];
+      return o;
+    });
+  }
+
+  if(orderBy){
+    const desc = (dir || "").toLowerCase() === "desc";
+    out.sort((a, b) => (a[orderBy] > b[orderBy] ? 1 : a[orderBy] < b[orderBy] ? -1 : 0) * (desc ? -1 : 1));
+  }
+  if(limit) out = out.slice(0, Number(limit));
+  return out;
+}
+
+/* AIに渡す前に必ず走らせる決まったクエリ。
+   「今日どれだけ開いたか」ではなく「その言い分は前にも通ったのか」を見る */
+function evidenceQueries(appId){
+  const A = "'" + appId + "'";
+  return [
+    { label:"今日この人がここに申告した回数",   sql:`SELECT count(*) FROM entries WHERE day = today AND app = ${A}` },
+    { label:"今日そのうち実際に開いた回数",     sql:`SELECT count(*) FROM entries WHERE day = today AND app = ${A} AND opened = 1` },
+    { label:"今日引き返した回数（全アプリ）",   sql:`SELECT count(*) FROM entries WHERE day = today AND verdict = 'block'` },
+    { label:"申告の中身の内訳（過去14日）",     sql:`SELECT intent, count(*) FROM entries WHERE t > ${Date.now() - 14 * 864e5} GROUP BY intent ORDER BY count(*) desc` },
+    { label:"この時間帯の常習度（過去14日・同じ時刻）", sql:`SELECT count(*) FROM entries WHERE hour = ${new Date().getHours()} AND t > ${Date.now() - 14 * 864e5}` },
+    { label:"申告文の平均の長さ（過去14日）",   sql:`SELECT avg(len) FROM entries WHERE t > ${Date.now() - 14 * 864e5}` },
+    { label:"直近の申告文",                     sql:`SELECT text, verdict FROM entries WHERE app = ${A} ORDER BY t desc LIMIT 3` },
+  ];
+}
+
+function runEvidence(appId){
+  return evidenceQueries(appId).map(q => {
+    let rows, err = "";
+    try{ rows = query(q.sql); }catch(e){ rows = []; err = String(e.message || e); }
+    return Object.assign({}, q, { rows, err });
+  });
+}
+
+function evidenceText(ev){
+  return ev.map(e => {
+    const val = e.err ? ("エラー: " + e.err)
+      : e.rows.length === 0 ? "0件"
+      : e.rows.map(r => Object.entries(r).map(([k, v]) => k + "=" + v).join(" ")).join(" / ");
+    return `${e.label}\n  SQL: ${e.sql}\n  → ${val}`;
+  }).join("\n");
+}
+
+/* ============ AI ============ */
+
+async function askAgent({ system, user }){
+  const a = settings.agent || {};
+  if(!a.endpoint) return null;
+  const res = await fetch(a.endpoint, {
+    method: "POST",
+    headers: { "content-type":"application/json", "x-togame-key": a.secret || "" },
+    body: JSON.stringify({ system, user }),
+  });
+  if(!res.ok) throw new Error((await res.text()).slice(0, 300) || String(res.status));
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", out = "";
+  for(;;){
+    const { value, done } = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, { stream:true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for(const line of lines){
+      if(!line.startsWith("data:")) continue;
+      let ev;
+      try{ ev = JSON.parse(line.slice(5).trim()); }catch(e){ continue; }
+      if(ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta") out += ev.delta.text;
+    }
+  }
+  return out.trim();
+}
+
+function judgeSystem(){
+  const voice = ((settings.agent && settings.agent.voice) || "").trim();
+  const lines = [
+    "SNSを開こうとしている人が、その理由を自分の言葉で書きました。",
+    "あなたはその言葉と、端末内のログをSQLで集計した結果を読み、扱いを決めます。",
+    "",
+    "# 決めること",
+    "- pass  : 言葉が具体的で、ログとも矛盾しない。通す。",
+    "- ask   : 言葉が曖昧か、ログと食い違う。あと1つだけ質問して確かめる。",
+    "- block : 言葉が中身のない後付けで、ログ上も繰り返している。今回は止める。",
+    "",
+    "# ルール",
+    "- 判断の根拠は、渡された数字のうち1つを必ず名指しする。",
+    "- 一般論は書かない。「時間は大切」「有意義に」の類は失敗。",
+    "- 命令しない。決めるのは本人。",
+    "- lineは1〜2文。questionは1文で、はい/いいえで終わらない聞き方にする。",
+    "- 数字は半角で、渡された値をそのまま書く。",
+    "",
+    "# 出力",
+    "次のJSONだけを返す。前置きもコードブロックも書かない。",
+    '{"verdict":"pass|ask|block","line":"本人に見せる一言","question":"askのときだけ。それ以外は空文字"}',
+  ];
+  if(voice){
+    lines.push("", "# 話し方（最優先）", "次の話し方をそのまま真似る。上のルールと衝突したらこちらを優先。", "", voice);
+  }
+  return lines.join("\n");
+}
+
+function judgePrompt(appId, turns, ev){
+  const now = new Date();
+  const said = turns.map((t, i) =>
+    t.who === "me" ? `本人${i ? "（追加）" : ""}: ${t.text}` : `あなたの問い: ${t.text}`
+  ).join("\n");
+  return [
+    `いま ${appName(appId)} を開こうとしている。時刻は${now.getHours()}時${pad2(now.getMinutes())}分。`,
+    "",
+    "# 本人が書いた言葉",
+    said,
+    "",
+    "# 端末内のログをSQLで集計した結果",
+    evidenceText(ev),
+    "",
+    `# 参考（端末内の下ごしらえ）`,
+    `直近の申告の分類: ${classify(turns.filter(t => t.who === "me").map(t => t.text).join(" ")).intent}、具体性スコア: ${specificity(turns.filter(t => t.who === "me").map(t => t.text).join(" "))}/4`,
+    "",
+    turns.filter(t => t.who === "me").length >= settings.maxTurns
+      ? "※すでに十分聞いた。askは使わず、passかblockのどちらかにする。"
+      : "",
+    "JSONだけを返す。",
+  ].filter(Boolean).join("\n");
+}
+
+function parseVerdict(raw){
+  if(!raw) return null;
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(!m) return null;
+  let o;
+  try{ o = JSON.parse(m[0]); }catch(e){ return null; }
+  const v = String(o.verdict || "").toLowerCase();
+  if(!["pass", "ask", "block"].includes(v)) return null;
+  return { verdict:v, line:String(o.line || "").trim(), question:String(o.question || "").trim() };
+}
+
+/* AIに届かなかったときの判定。端末内の数字だけで決める。
+   ここが無いと、通信が落ちた瞬間にアプリが素通しになる */
+function localVerdict(appId, turns){
+  const text = turns.filter(t => t.who === "me").map(t => t.text).join(" ");
+  const spec = specificity(text);
+  const c = classify(text);
+  const askedEnough = turns.filter(t => t.who === "me").length >= settings.maxTurns;
+  const todayN = query(`SELECT count(*) FROM entries WHERE day = today AND app = '${appId}'`)[0]["count(*)"];
+
+  if(c.intent === "purpose" && spec >= 2)
+    return { verdict:"pass", line:`書けているので通す。今日${todayN}回目。`, question:"" };
+  if(askedEnough)
+    return spec >= 2
+      ? { verdict:"pass", line:`今日${todayN}回目。行ってきていい。`, question:"" }
+      : { verdict:"block", line:`結局、何をしに行くのかは書けていない。今日${todayN}回目。`, question:"" };
+  return {
+    verdict:"ask",
+    line:`いまの言葉だと、まだ何をしに行くのか分からない。今日${todayN}回目。`,
+    question: c.intent === "escape" ? "そこで見たいものと、いま避けたいことは、どっちが先に浮かんだ。"
+            : c.intent === "crave"  ? "その通知が来ていなかったら、いま開いていた。"
+            : "開いて最初に何をする。それが終わったらどうする。",
+  };
+}
+
+async function decide(appId, turns){
+  const ev = runEvidence(appId);
+  const a = settings.agent || {};
+  const max = Number(a.dailyMax);
+  const usable = a.endpoint && !(max > 0 && aiUsedToday() >= max);
+  if(!usable) return { res: localVerdict(appId, turns), ev, note: a.endpoint ? "今日のAI上限に達したので端末内の判定" : "" };
+  bumpAi();
+  try{
+    const raw = await askAgent({ system: judgeSystem(), user: judgePrompt(appId, turns, ev) });
+    const parsed = parseVerdict(raw);
+    if(!parsed) return { res: localVerdict(appId, turns), ev, note:"AIの返しが読めなかったので端末内の判定" };
+    /* 聞きすぎ防止。上限を超えていたらaskを潰す */
+    if(parsed.verdict === "ask" && turns.filter(t => t.who === "me").length >= settings.maxTurns){
+      parsed.verdict = specificity(turns.map(t => t.text).join(" ")) >= 2 ? "pass" : "block";
+      parsed.question = "";
+    }
+    return { res: parsed, ev, note:"" };
+  }catch(e){
+    return { res: localVerdict(appId, turns), ev, note: "AIに届かなかった: " + String((e && e.message) || e).slice(0, 100) };
+  }
+}
+
+/* ============ 画面 ============ */
+
+let state = null;   // {appId, turns:[{who,text}], ev, note, busy}
+
+function swap(fn){ $app.innerHTML = ""; fn(); window.scrollTo(0, 0); }
+
+function nav(active){
+  return `<div class="nav">
+    <button data-go="home" class="${active === "home" ? "on" : ""}">書く</button>
+    <button data-go="log"  class="${active === "log"  ? "on" : ""}">ログ</button>
+    <button data-go="sql"  class="${active === "sql"  ? "on" : ""}">SQL</button>
+    <button data-go="set"  class="${active === "set"  ? "on" : ""}">設定</button>
+  </div>`;
+}
+
+function bindNav(){
+  $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => route(b.dataset.go));
+}
+
+function route(where, arg){
+  if(where === "home") return renderHome();
+  if(where === "log")  return renderLog();
+  if(where === "sql")  return renderSql();
+  if(where === "set")  return renderSettings();
+  if(where === "ask")  return renderAsk(arg);
+}
+
+/* --- 入力画面。選択肢は出さない --- */
+function renderHome(){
+  const appId = state && state.appId || new URLSearchParams(location.search).get("app") || settings.apps[0].id;
+  swap(() => {
+    $app.innerHTML = `<div class="pad">
+      ${nav("home")}
+      <p class="eyebrow" style="margin-top:14px">${esc(appName(appId))} を開こうとしている</p>
+      <h1 style="margin:8px 0 18px">いま、何をしに行く。</h1>
+      <div class="card">
+        <textarea id="say" class="compose" placeholder="思っていることを、そのまま書く。うまくまとめなくていい。"></textarea>
+        <div class="meter" id="meter"><i></i><i></i><i></i><i></i></div>
+        <p class="hint" id="hint">書いた言葉だけを見て決める。選択肢は出ない。</p>
+      </div>
+      <button class="btn-primary" id="go" disabled>これで見てもらう</button>
+      <p style="text-align:center"><button class="link" id="switch">別のアプリで書く</button></p>
+    </div>`;
+    bindNav();
+    const ta = document.getElementById("say");
+    const go = document.getElementById("go");
+    const meter = document.getElementById("meter");
+    ta.oninput = () => {
+      const s = specificity(ta.value);
+      [...meter.children].forEach((el, i) => el.classList.toggle("on", i < s));
+      go.disabled = ta.value.trim().length < 4;
+      document.getElementById("hint").textContent =
+        ta.value.trim().length < 4 ? "書いた言葉だけを見て決める。選択肢は出ない。"
+        : s >= 3 ? "具体的に書けている。" : "まだ言葉が薄い。何をするのかまで書けると通りやすい。";
+    };
+    go.onclick = () => {
+      state = { appId, turns:[{ who:"me", text: ta.value.trim() }] };
+      renderAsk();
+    };
+    document.getElementById("switch").onclick = () => {
+      const i = settings.apps.findIndex(a => a.id === appId);
+      state = { appId: settings.apps[(i + 1) % settings.apps.length].id, turns:[] };
+      renderHome();
+    };
+    setTimeout(() => ta.focus(), 60);
+  });
+}
+
+/* --- 判定・対話画面 --- */
+function renderAsk(){
+  swap(() => {
+    $app.innerHTML = `<div class="pad">
+      <p class="eyebrow">${esc(appName(state.appId))}</p>
+      <div id="thread" style="margin:16px 0"></div>
+      <div id="out"></div>
+    </div>`;
+    drawThread();
+    step();
+  });
+}
+
+function drawThread(){
+  document.getElementById("thread").innerHTML = state.turns.map(t =>
+    `<div class="turn ${t.who === "me" ? "mine" : ""}">
+       <p class="who">${t.who === "me" ? "あなた" : "問い"}</p>
+       <p style="color:var(--ink)">${esc(t.text)}</p>
+     </div>`).join("");
+}
+
+async function step(){
+  const out = document.getElementById("out");
+  out.innerHTML = `<p class="thinking">言葉とログを突き合わせている</p>`;
+  const { res, ev, note } = await decide(state.appId, state.turns);
+  state.ev = ev; state.note = note;
+
+  const cls = res.verdict === "pass" ? "v-pass" : res.verdict === "block" ? "v-block" : "v-ask";
+  const head = res.verdict === "pass" ? "通す" : res.verdict === "block" ? "今回は止める" : "もう少し聞く";
+
+  const sqlDump = `<details><summary>何を見て決めたか（SQL ${ev.length}本）</summary>
+    ${ev.map(e => `<div class="sql"><b>-- ${esc(e.label)}</b>\n${esc(e.sql)}\n-- → ${esc(e.err || (e.rows.length ? e.rows.map(r => Object.entries(r).map(([k, v]) => k + "=" + v).join(" ")).join(" / ") : "0件"))}</div>`).join("")}
+    ${note ? `<p class="hint">${esc(note)}</p>` : ""}
+  </details>`;
+
+  if(res.verdict === "ask"){
+    out.innerHTML = `<div class="verdict ${cls}">${head}</div>
+      <p style="color:var(--ink);font-size:18px;margin-bottom:6px">${esc(res.line)}</p>
+      <h1 style="margin:14px 0 14px">${esc(res.question || "それをして、何が分かる。")}</h1>
+      <div class="card">
+        <textarea id="more" class="compose" placeholder="答えを書く"></textarea>
+      </div>
+      <button class="btn-primary" id="send" disabled>答える</button>
+      <p style="text-align:center"><button class="link" id="quit">やめておく</button></p>
+      ${sqlDump}`;
+    const ta = document.getElementById("more"), send = document.getElementById("send");
+    ta.oninput = () => send.disabled = ta.value.trim().length < 2;
+    send.onclick = () => {
+      state.turns.push({ who:"ai", text: res.question || res.line });
+      state.turns.push({ who:"me", text: ta.value.trim() });
+      drawThread();
+      step();
+    };
+    document.getElementById("quit").onclick = () => finish("block", res.line, true);
+    setTimeout(() => ta.focus(), 60);
+    return;
+  }
+
+  out.innerHTML = `<div class="verdict ${cls}">${head}</div>
+    <h1 style="margin:0 0 18px">${esc(res.line)}</h1>
+    ${res.verdict === "pass"
+      ? `<button class="btn-primary" id="open">${esc(appName(state.appId))} を開く</button>
+         <p style="text-align:center"><button class="link" id="stay">やっぱりやめる</button></p>`
+      : `<button class="btn-stop" id="stay">わかった、閉じる</button>
+         <p style="text-align:center"><button class="link" id="open">それでも開く</button></p>`}
+    ${sqlDump}`;
+  document.getElementById("open").onclick = () => finish(res.verdict, res.line, false, true);
+  document.getElementById("stay").onclick = () => finish(res.verdict, res.line, true);
+}
+
+/* 行を1本だけ書き込む。対話の途中経過は本文にまとめて残す */
+function finish(verdict, line, resisted, opened){
+  const mine = state.turns.filter(t => t.who === "me").map(t => t.text);
+  const row = makeRow(state.appId, mine.join(" / "), {
+    turns: mine.length,
+    verdict: resisted ? "block" : verdict,
+    opened: opened ? 1 : 0,
+    line,
+  });
+  entries.push(row);
+  if(entries.length > 500) entries = entries.slice(-500);
+  saveEntries();
+
+  if(opened){
+    lastPass[state.appId] = Date.now();
+    saveLastPass();
+    const app = settings.apps.find(a => a.id === state.appId);
+    if(app && app.scheme) location.href = app.scheme;
+    toast("記録した");
+    setTimeout(() => { state = null; renderHome(); }, 400);
+  }else{
+    renderDone(row);
+  }
+}
+
+function renderDone(row){
+  swap(() => {
+    const today = query("SELECT count(*) FROM entries WHERE day = today AND verdict = 'block' AND opened = 0")[0]["count(*)"];
+    $app.innerHTML = `<div class="pad">
+      <p class="eyebrow">閉じた</p>
+      <h1 style="margin:10px 0 18px">今日${today}回、書いた時点で止まっている。</h1>
+      <div class="card">
+        <div class="stat"><span>今日の申告</span><b>${query("SELECT count(*) FROM entries WHERE day = today")[0]["count(*)"]}回</b></div>
+        <div class="stat"><span>そのうち開いた</span><b>${query("SELECT count(*) FROM entries WHERE day = today AND opened = 1")[0]["count(*)"]}回</b></div>
+        <div class="stat"><span>今回の往復</span><b>${row.turns}回</b></div>
+      </div>
+      ${nav("home")}
+    </div>`;
+    bindNav();
+    state = null;
+  });
+}
+
+/* --- ログ --- */
+function renderLog(){
+  swap(() => {
+    const rows = entries.slice(-40).reverse();
+    $app.innerHTML = `<div class="pad">
+      ${nav("log")}
+      <h1 style="margin:14px 0 16px">書いた言葉</h1>
+      ${rows.length ? rows.map(r => `<div class="card">
+          <p class="eyebrow">${r.day} ${pad2(r.hour)}時 ・ ${esc(appName(r.app))} ・ ${r.verdict === "pass" ? "通した" : r.verdict === "block" ? "止めた" : "-"}${r.opened ? "／開いた" : ""}</p>
+          <p style="color:var(--ink);margin-top:6px">${esc(r.text)}</p>
+          ${r.line ? `<p class="hint">→ ${esc(r.line)}</p>` : ""}
+        </div>`).join("")
+      : `<div class="card"><p>まだ1行もない。</p></div>`}
+    </div>`;
+    bindNav();
+  });
+}
+
+/* --- SQLコンソール。AIに渡している事実を自分の手で確かめられる --- */
+function renderSql(){
+  swap(() => {
+    const preset = evidenceQueries(settings.apps[0].id);
+    $app.innerHTML = `<div class="pad">
+      ${nav("sql")}
+      <h1 style="margin:14px 0 8px">SQLで見る</h1>
+      <p style="margin-bottom:16px">entries が唯一のテーブル。列は t, day, hour, wd, app, text, len, intent, spec, turns, verdict, opened。</p>
+      <div class="card">
+        <textarea id="q" rows="3" style="font-family:ui-monospace,monospace;font-size:13px">SELECT intent, count(*) FROM entries GROUP BY intent ORDER BY count(*) desc</textarea>
+        <div style="margin-top:10px"><button class="btn-primary" id="run">実行</button></div>
+        <div id="res" style="margin-top:12px"></div>
+      </div>
+      <h2>判定に使っている定型クエリ</h2>
+      ${preset.map(p => `<div class="sql"><b>-- ${esc(p.label)}</b>\n${esc(p.sql)}</div>`).join("")}
+    </div>`;
+    bindNav();
+    document.getElementById("run").onclick = () => {
+      const res = document.getElementById("res");
+      try{
+        const rows = query(document.getElementById("q").value);
+        res.innerHTML = rows.length
+          ? `<div class="sql">${esc(rows.map(r => Object.entries(r).map(([k, v]) => k + "=" + String(v).slice(0, 60)).join("  ")).join("\n"))}</div>`
+          : `<p class="hint">0件</p>`;
+      }catch(e){ res.innerHTML = `<p class="hint" style="color:var(--stop)">${esc(String(e.message || e))}</p>`; }
+    };
+  });
+}
+
+/* --- 設定 --- */
+function renderSettings(){
+  swap(() => {
+    const a = settings.agent;
+    $app.innerHTML = `<div class="pad">
+      ${nav("set")}
+      <h1 style="margin:14px 0 16px">設定</h1>
+      <div class="card">
+        <h2>AI</h2>
+        <p class="hint" style="margin:0 0 4px">未設定でも動く。そのときは端末内の数字だけで判定する。</p>
+        <label>エンドポイント</label>
+        <input id="ep" value="${esc(a.endpoint)}" placeholder="https://togame-agent.xxxx.workers.dev" inputmode="url" autocapitalize="off" spellcheck="false">
+        <label>合言葉</label>
+        <input id="sec" value="${esc(a.secret)}" autocapitalize="off" spellcheck="false">
+        <label>話し方</label>
+        <textarea id="voice" rows="4" placeholder="普段AIに入れている「どう応答してほしいか」をそのまま貼る">${esc(a.voice)}</textarea>
+        <label>1日に呼ぶ上限</label>
+        <input id="max" type="number" value="${a.dailyMax}" min="0" max="500" inputmode="numeric">
+        <div style="margin-top:14px"><button class="btn-quiet" id="test">つながるか試す</button></div>
+        <p class="hint" id="tres" aria-live="polite"></p>
+      </div>
+      <div class="card">
+        <h2>対話</h2>
+        <label>何往復まで聞き返すか</label>
+        <input id="turns" type="number" value="${settings.maxTurns}" min="1" max="5" inputmode="numeric">
+        <label>通したあと何分は素通しにするか</label>
+        <input id="grace" type="number" value="${settings.graceMin}" min="1" max="120" inputmode="numeric">
+      </div>
+      <div class="card">
+        <h2>データ</h2>
+        <p class="hint">${entries.length}行。すべて端末内。</p>
+        <div class="row" style="margin-top:12px">
+          <button class="btn-quiet" id="exp">エクスポート</button>
+          <button class="btn-quiet" id="wipe" style="color:var(--stop)">全消去</button>
+        </div>
+      </div>
+      <button class="btn-primary" id="save">保存する</button>
+    </div>`;
+    bindNav();
+
+    document.getElementById("save").onclick = () => {
+      settings.agent.endpoint = document.getElementById("ep").value.trim();
+      settings.agent.secret   = document.getElementById("sec").value.trim();
+      settings.agent.voice    = document.getElementById("voice").value;
+      settings.agent.dailyMax = Number(document.getElementById("max").value) || 0;
+      settings.maxTurns = Math.max(1, Number(document.getElementById("turns").value) || 3);
+      settings.graceMin = Math.max(1, Number(document.getElementById("grace").value) || 5);
+      saveSettings();
+      toast("保存した");
+    };
+    document.getElementById("test").onclick = async () => {
+      const el = document.getElementById("tres");
+      settings.agent.endpoint = document.getElementById("ep").value.trim();
+      settings.agent.secret   = document.getElementById("sec").value.trim();
+      el.textContent = "試している…";
+      try{
+        const t = await askAgent({ system:"ひとことで返す。", user:"つながったか、5文字で。" });
+        el.textContent = t ? "つながった: " + t.slice(0, 60) : "空の返事";
+      }catch(e){ el.textContent = "だめだった: " + String((e && e.message) || e).slice(0, 120); }
+    };
+    document.getElementById("exp").onclick = () => {
+      const blob = new Blob([JSON.stringify({ settings, entries }, null, 2)], { type:"application/json" });
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url; a2.download = "kotoba-" + todayKey() + ".json";
+      a2.click(); URL.revokeObjectURL(url);
+    };
+    document.getElementById("wipe").onclick = () => {
+      if(!confirm("全部消す。戻せない。")) return;
+      ["kt_settings", "kt_entries", "kt_lastpass", "kt_aicount"].forEach(k => localStorage.removeItem(k));
+      location.reload();
+    };
+  });
+}
+
+/* ============ 起動 ============ */
+
+/* ショートカットから ?app=x で飛んでくる。通した直後の数分は素通しにして、
+   SNSから戻るたびに聞き返される無限ループを避ける（トガメで踏んだ問題） */
+(function boot(){
+  const p = new URLSearchParams(location.search);
+  const appId = p.get("app");
+  if(appId && settings.apps.some(a => a.id === appId)){
+    const last = lastPass[appId] || 0;
+    if(Date.now() - last < settings.graceMin * 60000){
+      const app = settings.apps.find(a => a.id === appId);
+      if(app && app.scheme){ location.href = app.scheme; return; }
+    }
+    state = { appId, turns:[] };
+  }
+  renderHome();
+})();
+</script>
