@@ -1,0 +1,20 @@
+# ブラウザ操作APIを足す差分ファイル
+# 起動: docker compose -f compose.yml -f compose.gpu.yml -f compose.playwright.yml up -d --build
+services:
+  playwright:
+    build: ./playwright-api
+    container_name: playwright
+    restart: unless-stopped
+    environment:
+      # スクリーンショットのURLを組み立てる時のベース。ブラウザから開けるアドレスを入れる
+      - PUBLIC_BASE_URL=http://localhost:8000
+      - TIMEOUT_MS=30000
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - shots:/data/shots
+    # Chromium は共有メモリを食うので増やしておく
+    shm_size: "1gb"
+
+volumes:
+  shots:
