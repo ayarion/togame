@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>トガメ 介入フロー デモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ==========================================================
+     介入フローのデモ。Replitデザインシステムを土台に、
+     引き返した画面だけCalderaのハーフトーンドット地を取り込んでいる。
+
+     モックと違い、実際に押して進める。回数も動く。
+     本体(index.html)には手を入れていない。
+     ========================================================== */
+
+  :root{
+    /* Replit パレット */
+    --ember-orange:#ff3c00;
+    --sunset-coral:#ff764c;
+    --peach-blush:#ffb199;
+    --burnt-rust:#ec4e02;
+    --electric-blue:#2492ff;
+    --warm-canvas:#faf6f1;
+    --pure-white:#ffffff;
+    --ink-black:#0e0e0f;
+    --pewter:#52545a;
+    --sand:#dfddd8;
+
+    /* Calderaから持ってくるのはこの1色だけ。引き返した画面のドット地に使う。
+       Replit側で揃えたければ --electric-blue に差し替えれば済む */
+    --halftone:#524ae9;
+
+    --font-display:'Inter','Noto Sans JP','Hiragino Sans',sans-serif;
+    --font-body:'Inter','Noto Sans JP','Hiragino Sans',sans-serif;
+
+    --radius-buttons:100px;
+    --radius-feature:48px;
+    --radius-card:20px;
+    --radius-input:6px;
+
+    --page-pad:20px;
+    --card-padding:32px;
+    --gap:12px;
+
+    --ease-out:cubic-bezier(0.23,1,0.32,1);
+    --ease-drawer:cubic-bezier(0.32,0.72,0,1);
+  }
+  @media (max-width:479px){ :root{ --page-pad:16px; --card-padding:26px; } }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100%;background:var(--warm-canvas)}
+  body{
+    font-family:var(--font-body);font-weight:400;
+    font-size:16px;line-height:1.6;color:var(--pewter);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .screen{
+    position:relative;
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:32px var(--page-pad) calc(32px + env(safe-area-inset-bottom));
+    max-width:520px;margin:0 auto;
+  }
+  body:not(.embed) .screen{padding-bottom:88px}
+
+  /* ---------- タイポグラフィ ----------
+     太らせず、負の字詰めで見せる。日本語は全角なので詰めた分だけ効く */
+  .display{
+    font-family:var(--font-display);
+    font-weight:500;letter-spacing:-0.04em;line-height:1.16;
+    color:var(--ink-black);text-wrap:balance;word-break:auto-phrase;
+  }
+  h1.ask{font-size:clamp(40px,12vw,56px);margin-bottom:32px}
+  h1.say{font-size:clamp(30px,8.5vw,40px);letter-spacing:-0.035em;line-height:1.22}
+  h1.small{font-size:clamp(24px,7vw,30px);letter-spacing:-0.03em;line-height:1.3;margin-bottom:10px}
+
+  .label{
+    font-size:12px;font-weight:500;letter-spacing:.14em;
+    color:var(--pewter);margin-bottom:14px;
+  }
+  .context{font-size:14px;color:var(--pewter);margin-top:24px}
+  .alt{font-size:15px;color:var(--pewter);margin-top:16px}
+  .lead{font-size:15px;color:var(--pewter)}
+
+  /* ---------- 4択 ----------
+     面は4枚とも白のまま。線の色だけで群を差す。
+     無意識側はEmberの枠で囲われ、目的あり側はSandの細線で静かに置かれる */
+  .choices{display:flex;flex-direction:column;gap:var(--gap)}
+  .choice{
+    display:flex;align-items:center;gap:12px;
+    width:100%;min-height:64px;padding:18px 20px;
+    background:var(--pure-white);
+    border:1px solid var(--sand);border-radius:var(--radius-card);
+    font:inherit;font-size:16px;font-weight:500;color:var(--ink-black);
+    text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  }
+  .choice:active{transform:scale(.985)}
+  .choice.impulse{border:1.5px solid var(--ember-orange)}
+  .choice .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--sand)}
+  .choice.impulse .dot{background:var(--ember-orange)}
+  .choice .txt{flex:1;min-width:0}
+  /* Prompt Input Bar から借りた円形アクション。押せる場所を形で示す */
+  .go{
+    width:34px;height:34px;flex:none;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;line-height:1;
+    border:1px solid var(--sand);color:var(--pewter);background:var(--warm-canvas);
+  }
+  .choice.impulse .go{
+    background:var(--ember-orange);border-color:var(--ember-orange);color:var(--pure-white);
+  }
+
+  /* ---------- フィーチャーカード。1画面に1枚だけ ---------- */
+  .feature{
+    border-radius:var(--radius-feature);padding:var(--card-padding);
+    background:var(--peach-blush);
+  }
+  /* Peach Blush上ではPewterが4.33:1で本文基準を割る。Ink Blackを混ぜて6.9:1にする */
+  .feature .alt{color:color-mix(in srgb, var(--ink-black) 78%, var(--peach-blush))}
+
+  /* ---------- バッジ ---------- */
+  .tag{
+    display:inline-flex;align-self:flex-start;align-items:center;gap:7px;
+    margin-bottom:16px;padding:5px 11px;border-radius:var(--radius-input);
+    background:var(--pure-white);border:1px solid var(--sand);
+    font-size:12px;font-weight:500;color:var(--ink-black);
+  }
+  .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--sand)}
+  .tag.impulse .dot{background:var(--ember-orange)}
+
+  /* ---------- ボタン ---------- */
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:32px}
+  .btn{
+    width:100%;min-height:56px;padding:14px 24px;border-radius:var(--radius-buttons);
+    font:inherit;font-size:17px;font-weight:500;letter-spacing:-0.01em;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform 150ms var(--ease-out), background 150ms var(--ease-out);
+  }
+  .btn:active{transform:scale(.985)}
+  /* 白文字はEmber Orange上で3.56:1しか出ず本文基準に届かない。Ink Blackなら5.42:1 */
+  .btn-primary{
+    background:var(--ember-orange);border:1.5px solid var(--ember-orange);color:var(--ink-black);
+  }
+  .btn-primary:active{background:var(--burnt-rust);border-color:var(--burnt-rust)}
+  /* ピル形状は守りつつ枠をSandに落とし、引き止める設計の主従を保つ */
+  .btn-secondary{background:transparent;border:1.5px solid var(--sand);color:var(--pewter)}
+
+  /* ---------- 引き返した ----------
+     ここだけCalderaから。ドット地の上に数字が直に乗る。カードには入れない */
+  .halftone{
+    position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(
+      color-mix(in srgb, var(--halftone) 26%, transparent) 1.7px, transparent 1.8px);
+    background-size:24px 24px;
+  }
+  .done-body{position:relative}
+  /* 参考にしたCaldera画像の数字は900の極太だが、この系はウェイト500止まり。
+     太らせる代わりに寸法で質量を出し、下の見出しに負けない大きさにする */
+  .count{
+    font-family:var(--font-display);font-weight:500;
+    font-size:clamp(76px,23vw,108px);line-height:.92;letter-spacing:-0.06em;
+    color:var(--ember-orange);margin-bottom:18px;
+  }
+  .marks{display:flex;gap:7px;margin-bottom:24px}
+  .marks i{
+    width:10px;height:10px;border-radius:50%;display:block;background:transparent;
+    border:1.5px solid color-mix(in srgb, var(--ink-black) 26%, transparent);
+  }
+  .marks i.on{background:var(--ember-orange);border-color:var(--ember-orange)}
+  /* Electric Blueは2.94:1しか出ないので文字色にはしない。下線と矢印だけに使う */
+  .link{
+    display:inline-block;align-self:flex-start;margin-top:22px;
+    font:inherit;font-size:15px;font-weight:500;color:var(--ink-black);
+    background:none;border:none;cursor:pointer;
+    text-decoration:underline;text-decoration-color:var(--electric-blue);
+    text-decoration-thickness:2px;text-underline-offset:4px;
+  }
+  .link .arw{color:var(--electric-blue)}
+
+  /* ---------- 入場。頻度で強度を変える本体の設計を維持する ----------
+     問い詰めは毎日何十回出るのでフェードのみ150ms。選択後は260msのrise */
+  .fade{opacity:1;transition:opacity 150ms var(--ease-out)}
+  @starting-style{.fade{opacity:0}}
+  .rise{
+    opacity:1;transform:translateY(0);
+    transition:opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+  }
+  @starting-style{.rise{opacity:0;transform:translateY(10px)}}
+
+  /* ---------- 色が満ちる ---------- */
+  .flood{
+    position:fixed;inset:0;z-index:40;pointer-events:none;
+    transform:scaleY(0);transform-origin:bottom;
+    transition:transform 340ms var(--ease-drawer);
+  }
+  .flood.on{transform:scaleY(1)}
+  .flood.out{opacity:0;transition:opacity 280ms var(--ease-out)}
+  @media (prefers-reduced-motion:reduce){
+    .flood{transition:opacity 120ms linear;transform:none;opacity:0}
+    .flood.on{opacity:1}
+  }
+
+  /* ---------- デモ用の操作バー。本体には入れない ---------- */
+  .bar{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;
+    display:flex;align-items:center;gap:8px;
+    padding:10px var(--page-pad) calc(10px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb, var(--warm-canvas) 92%, transparent);
+    border-top:1px solid var(--sand);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    font-size:12px;color:var(--pewter);
+  }
+  .bar .state{flex:1;min-width:0}
+  .bar .state b{color:var(--ink-black);font-weight:500}
+  .bar button{
+    font:inherit;font-size:12px;font-weight:500;padding:7px 12px;min-height:34px;
+    border:1px solid var(--sand);border-radius:var(--radius-buttons);
+    background:var(--pure-white);color:var(--pewter);cursor:pointer;
+  }
+  body.embed .bar{display:none}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<div class="bar">
+  <span class="state" id="state"></span>
+  <button id="grace-btn">素通り画面</button>
+  <button id="reset">最初から</button>
+</div>
+
+<script>
+  /* 本体のデータ構造をそのまま持ってきている。
+     無意識＝開いた自分を疑うべき理由／目的あり＝道具として使えている理由 */
+  const REASONS = [
+    { id:"hima",    label:"暇つぶし",   group:"impulse",
+      line:"暇なら、それは自由時間ってこと。", min:15 },
+    { id:"tohi",    label:"逃避",       group:"impulse",
+      line:"何から逃げてる？",                 min:20 },
+    { id:"shirabe", label:"調べもの",   group:"deliberate",
+      line:"OK、調べものだね。",               min:5  },
+    { id:"work",    label:"勉強や仕事", group:"deliberate",
+      line:"了解、道具として使おう。",         min:10 },
+  ];
+  const R = Object.fromEntries(REASONS.map(r=>[r.id,r]));
+  /* 本体の settings.conversions をそのまま使う */
+  const CONVERSIONS = [
+    { name:"軽いアプリのプロトタイプを作る", min:60 },
+    { name:"筋トレ1セット",                   min:30 },
+    { name:"企業研究1社ぶん",                 min:30 },
+    { name:"資格の勉強を1単元",               min:20 },
+    { name:"SPIを10問",                       min:20 },
+    { name:"本を20ページ読む",                min:15 },
+  ];
+
+  const $app = document.getElementById("app");
+  const $state = document.getElementById("state");
+  const q = new URLSearchParams(location.search);
+  if(q.get("embed") === "1") document.body.classList.add("embed");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  /* 実際に押すと動く。デモなので端末には残さず、メモリだけで持つ */
+  let events = [
+    { reason:"hima",    kind:"open"   },
+    { reason:"shirabe", kind:"resist" },
+  ];
+  const opens   = () => events.length;
+  const resists = () => events.filter(e=>e.kind==="resist").length;
+  const minutes = () => events
+    .filter(e=>e.kind==="open")
+    .reduce((s,e)=> s + R[e.reason].min, 0);
+
+  function syncBar(){
+    $state.innerHTML = `今日 <b>${opens()}</b> 回 / 引き返し <b>${resists()}</b> 回`;
+  }
+
+  /* 動詞止めの項目に「こと」を挟む。
+     本体は「本を20ページ読む」に「〜ができる。」を直結していて、
+     「本を20ページ読むができる。」と出てしまっている（index.html:857 と :1000）。
+     名詞止めの「筋トレ1セット」には挟まない。ひらがなのう段止まりを動詞とみなす */
+  const needsKoto = s => /[うくぐすずつづぬふぶむゆる]$/.test(s);
+  const conn = s => needsKoto(s) ? s + "こと" : s;
+
+  function couldText(totalMin){
+    // 収まるものをシャッフルしてから詰める。本体の couldHaveText と同じ考え方
+    const items = CONVERSIONS
+      .filter(c => c.min > 0 && c.min <= totalMin)
+      .map(c => [Math.random(), c]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+    let rest = totalMin;
+    const done = [];
+    for(const it of items){
+      if(done.length >= 2) break;
+      const n = Math.floor(rest / it.min);
+      if(n >= 1){
+        // 「〜を作る」のような項目名だと「を」が重複するので回数は括弧書きにする
+        done.push(n > 1 ? `${it.name}（${n}回ぶん）` : it.name);
+        rest -= n * it.min;
+      }
+    }
+    return done.map(conn).join("と");
+  }
+
+  function intercept(){
+    const nth = opens() + 1;
+    const ctx = nth === 1
+      ? "今日はじめての起動。"
+      : `今日${nth}回目。ここまでInstagramだけで${minutes()}分（推定）。`;
+    $app.innerHTML = `
+      <div class="screen fade">
+        <p class="label">INSTAGRAM を開こうとしています</p>
+        <h1 class="display ask">なんで開いたの？</h1>
+        <div class="choices">
+          ${REASONS.map(r=>`
+            <button class="choice ${r.group}" data-r="${r.id}">
+              <span class="dot"></span>
+              <span class="txt">${esc(r.label)}</span>
+              <span class="go">→</span>
+            </button>`).join("")}
+        </div>
+        <p class="context">${esc(ctx)}</p>
+      </div>`;
+    $app.querySelectorAll(".choice").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        const id = b.dataset.r;
+        // 先に開いたとして記録する。やめておくを選んだら resist に昇格する
+        events.push({ reason:id, kind:"open" });
+        syncBar();
+        flood(id, ()=> followup(id));
+      });
+    });
+  }
+
+  function followup(id){
+    const r = R[id];
+    const stay = r.group === "impulse";
+    // 収まる項目が1つも無いときは換算文ごと出さない
+    const alt = stay ? couldText(r.min) : "";
+    $app.innerHTML = `
+      <div class="screen rise">
+        <span class="tag ${r.group}"><span class="dot"></span>${esc(r.label)}</span>
+        <div class="feature">
+          <h1 class="display say">${esc(r.line)}</h1>
+          ${alt ? `<p class="alt">いつもの1回ぶん（約${r.min}分）があれば、${esc(alt)}ができる。</p>` : ""}
+        </div>
+        <div class="actions">
+          ${stay
+            ? `<button class="btn btn-primary"   id="stay">やめておく</button>
+               <button class="btn btn-secondary" id="go">それでも開く</button>`
+            : `<button class="btn btn-primary"   id="go">それでも開く</button>
+               <button class="btn btn-secondary" id="stay">やめておく</button>`}
+        </div>
+      </div>`;
+    document.getElementById("stay").addEventListener("click", ()=>{
+      const last = events[events.length-1];
+      if(last && last.kind === "open") last.kind = "resist";
+      syncBar();
+      resistDone();
+    });
+    document.getElementById("go").addEventListener("click", allowed);
+  }
+
+  /* 引き返した画面。ここだけCalderaのドット地を敷き、数字を直に乗せる */
+  function resistDone(){
+    const wins = resists();
+    $app.innerHTML = `
+      <div class="screen rise">
+        <div class="halftone"></div>
+        <div class="done-body">
+          <div class="count">${wins}</div>
+          <div class="marks">
+            ${events.map(e=>`<i class="${e.kind==="resist"?"on":""}"></i>`).join("")}
+          </div>
+          <h1 class="display small">引き返した。今日${wins}回目のえらい。</h1>
+          <p class="lead">このままホーム画面に戻ろう。</p>
+          <button class="link" id="again">もう一度ためす <span class="arw">→</span></button>
+        </div>
+      </div>`;
+    document.getElementById("again").addEventListener("click", intercept);
+  }
+
+  function allowed(){
+    $app.innerHTML = `
+      <div class="screen rise">
+        <h1 class="display say">どうぞ。</h1>
+        <p class="alt">ホームに戻ってInstagramを開いてOK。5分間は引き止めない。</p>
+        <button class="link" id="again">もう一度ためす <span class="arw">→</span></button>
+      </div>`;
+    document.getElementById("again").addEventListener("click", intercept);
+  }
+
+  function grace(){
+    $app.innerHTML = `
+      <div class="screen fade">
+        <h1 class="display say">さっき答えたばかり。</h1>
+        <p class="alt">5分間は引き止めない。このままどうぞ。</p>
+        <button class="link" id="again">もう一度ためす <span class="arw">→</span></button>
+      </div>`;
+    document.getElementById("again").addEventListener("click", intercept);
+  }
+
+  function flood(id, then){
+    // Ember Orangeのベタは明色地では刺さりすぎる。無意識側はSunset Coralで満たす。
+    // 目的あり側は騒がず、地に馴染む白で静かに送る
+    const c = R[id].group === "impulse" ? "#ff764c" : "#ffffff";
+    const el = document.createElement("div");
+    el.className = "flood";
+    el.style.background = `linear-gradient(to top, ${c}, color-mix(in srgb, ${c} 35%, #faf6f1))`;
+    document.body.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add("on"));
+    setTimeout(()=>{ then(); el.classList.add("out"); setTimeout(()=> el.remove(), 300); }, 340);
+  }
+
+  document.getElementById("reset").addEventListener("click", ()=>{
+    events = [{ reason:"hima", kind:"open" }, { reason:"shirabe", kind:"resist" }];
+    syncBar(); intercept();
+  });
+  document.getElementById("grace-btn").addEventListener("click", grace);
+
+  syncBar();
+  ({ followup:()=>followup("hima"), done:resistDone, grace, allowed }[q.get("screen")] || intercept)();
+</script>
+</body>
+</html>
