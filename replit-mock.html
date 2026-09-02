@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>トガメ 介入画面 Replitモック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ==========================================================
+     Replit デザインシステムを介入画面に当てたモック。白基調のみ。
+     本体(index.html)には触れていない。
+
+     元仕様書からの変更点は4つ。いずれもコメントで理由を添えてある。
+       1. オンボーディングは対象外（コードに存在しない）
+       2. 主ボタンの文字色を白からInk Blackへ（白は3.56:1で本文基準に届かない）
+       3. Electric Blueは文字色に使わない（2.94:1）。下線と矢印の装飾のみ
+       4. 選択肢カードの内パディングを32pxから20pxへ（4枚縦積みで画面に収まらない）
+     ========================================================== */
+
+  :root{
+    /* Replit パレット */
+    --color-ember-orange:#ff3c00;
+    --color-sunset-coral:#ff764c;
+    --color-peach-blush:#ffb199;
+    --color-burnt-rust:#ec4e02;
+    --color-electric-blue:#2492ff;
+    --color-warm-canvas:#faf6f1;
+    --color-pure-white:#ffffff;
+    --color-ink-black:#0e0e0f;
+    --color-pewter:#52545a;
+    --color-sand:#dfddd8;
+    --color-deep-charcoal:#1a1919;
+
+    /* Interは日本語グリフを持たないので、日本語はNoto Sans JPが受ける。
+       INSTAGRAM や 約15分 といった英数字だけInterになる混植構成 */
+    --font-display:'Inter','Noto Sans JP','Hiragino Sans',sans-serif;
+    --font-body:'Inter','Noto Sans JP','Hiragino Sans',sans-serif;
+
+    --radius-buttons:100px;
+    --radius-feature-card:48px;
+    --radius-card:20px;
+    --radius-input:6px;
+
+    --page-pad:20px;
+    --card-padding:32px;
+    --element-gap:12px;
+  }
+  @media (max-width:479px){ :root{ --page-pad:16px; --card-padding:26px; } }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100%;background:var(--color-warm-canvas)}
+  body{
+    font-family:var(--font-body);font-weight:400;
+    font-size:16px;line-height:1.6;color:var(--color-pewter);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .screen{
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:32px var(--page-pad) calc(32px + env(safe-area-inset-bottom));
+    max-width:520px;margin:0 auto;
+  }
+  body:not(.embed) .screen{padding-bottom:96px}
+
+  /* ---------- タイポグラフィ ----------
+     太さでは押さない。400〜500に留め、負の字詰めで権威を出すのがこの系の作法 */
+  .display{
+    font-family:var(--font-display);
+    font-weight:500;letter-spacing:-0.04em;line-height:1.16;
+    color:var(--color-ink-black);
+    text-wrap:balance;word-break:auto-phrase;
+  }
+  h1.ask{font-size:clamp(40px,12vw,56px);margin-bottom:32px}
+  h1.say{font-size:clamp(30px,8.5vw,40px);letter-spacing:-0.035em;line-height:1.22}
+  h1.done-h{font-size:clamp(24px,7vw,30px);letter-spacing:-0.03em;line-height:1.3;margin-bottom:10px}
+
+  .label{
+    font-size:12px;font-weight:500;letter-spacing:.14em;
+    color:var(--color-pewter);margin-bottom:14px;
+  }
+  .context{font-size:14px;line-height:1.6;color:var(--color-pewter);margin-top:24px}
+  .alt{font-size:15px;line-height:1.6;color:var(--color-pewter);margin-top:16px}
+
+  /* ---------- 4択 ----------
+     この系は境界線で階層を作る。面は白のまま、線の色と太さで意味を差す。
+     無意識側はEmberの枠で囲われ、目的あり側はSandの細線で静かに置かれる */
+  .choices{display:flex;flex-direction:column;gap:var(--element-gap)}
+  .choice{
+    display:flex;align-items:center;gap:12px;
+    width:100%;min-height:64px;padding:18px 20px;
+    background:var(--color-pure-white);
+    border:1px solid var(--color-sand);
+    border-radius:var(--radius-card);
+    font:inherit;font-size:16px;font-weight:500;color:var(--color-ink-black);
+    text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform 150ms cubic-bezier(0.23,1,0.32,1),
+               border-color 150ms cubic-bezier(0.23,1,0.32,1);
+  }
+  .choice:active{transform:scale(.985)}
+  .choice.impulse{border:1.5px solid var(--color-ember-orange)}
+  .choice .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--color-sand)}
+  .choice.impulse .dot{background:var(--color-ember-orange)}
+  .choice .txt{flex:1;min-width:0}
+
+  /* Prompt Input Bar から借りた円形アクション。押せる場所であることを形で示す */
+  .go{
+    width:34px;height:34px;flex:none;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;line-height:1;
+    border:1px solid var(--color-sand);color:var(--color-pewter);
+    background:var(--color-warm-canvas);
+  }
+  .choice.impulse .go{
+    background:var(--color-ember-orange);border-color:var(--color-ember-orange);
+    color:var(--color-pure-white);
+  }
+
+  /* ---------- フィーチャーカード ----------
+     視覚的な句読点として1画面に1枚だけ置く。乱用しない */
+  .feature{
+    border-radius:var(--radius-feature-card);
+    padding:var(--card-padding);
+    background:var(--color-peach-blush);
+  }
+  .feature.coral{background:var(--color-sunset-coral)}
+  /* Peach Blushの上ではPewterが4.33:1しか出ず本文基準に届かない。
+     Ink Blackを混ぜて落とし、地に馴染ませたまま基準を満たす */
+  .feature .alt{color:color-mix(in srgb, var(--color-ink-black) 78%, var(--color-peach-blush))}
+
+  /* ---------- バッジ ---------- */
+  .tag{
+    display:inline-flex;align-self:flex-start;align-items:center;gap:7px;
+    margin-bottom:16px;padding:5px 11px;
+    border-radius:var(--radius-input);
+    background:var(--color-pure-white);border:1px solid var(--color-sand);
+    font-size:12px;font-weight:500;color:var(--color-ink-black);
+  }
+  /* ドットは群に従う。無意識側だけがEmberで、目的あり側は中立のまま */
+  .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--color-sand)}
+  .tag.impulse .dot{background:var(--color-ember-orange)}
+
+  /* ---------- ボタン ---------- */
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:32px}
+  .btn{
+    width:100%;min-height:56px;padding:14px 24px;
+    border-radius:var(--radius-buttons);
+    font:inherit;font-size:17px;font-weight:500;letter-spacing:-0.01em;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:transform 150ms cubic-bezier(0.23,1,0.32,1);
+  }
+  .btn:active{transform:scale(.985)}
+  /* 元仕様書は白文字だが、白/Ember Orangeは3.56:1で本文基準4.5を満たさない。
+     Ink Blackなら5.42:1で通るのでこちらを採る */
+  .btn-primary{
+    background:var(--color-ember-orange);border:1.5px solid var(--color-ember-orange);
+    color:var(--color-ink-black);
+  }
+  .btn-primary:active{background:var(--color-burnt-rust);border-color:var(--color-burnt-rust)}
+  /* 副ボタンはピル形状を守りつつ、枠をSandに落として主従を保つ。
+     Ink Blackの枠だと主ボタンと重さが並び、引き止める設計意図が消える */
+  .btn-secondary{
+    background:transparent;border:1.5px solid var(--color-sand);
+    color:var(--color-pewter);
+  }
+
+  /* ---------- 引き返した ---------- */
+  .count{
+    font-family:var(--font-display);font-weight:500;
+    font-size:clamp(56px,17vw,76px);line-height:1;letter-spacing:-0.05em;
+    color:var(--color-ink-black);margin-bottom:14px;
+  }
+  .marks{display:flex;gap:7px}
+  /* 未達は塗らず空の枠にする。Coralの上で塗りの濃淡だと差が読み取れない */
+  .marks i{
+    width:10px;height:10px;border-radius:50%;display:block;
+    background:transparent;
+    border:1.5px solid color-mix(in srgb, var(--color-ink-black) 32%, transparent);
+  }
+  .marks i.on{background:var(--color-ink-black);border-color:var(--color-ink-black)}
+  .done-head{margin-top:26px}
+  .done p{font-size:15px;color:var(--color-pewter)}
+  /* Electric Blueは2.94:1しか出ないので文字色にはしない。下線と矢印だけに使う */
+  .link{
+    display:inline-block;align-self:flex-start;margin-top:20px;
+    font-size:15px;font-weight:500;color:var(--color-ink-black);
+    text-decoration:underline;text-decoration-color:var(--color-electric-blue);
+    text-decoration-thickness:2px;text-underline-offset:4px;cursor:pointer;
+  }
+  .link .arw{color:var(--color-electric-blue)}
+
+  /* ---------- 入場。本体の設計を引き継ぐ ---------- */
+  .fade{opacity:1;transition:opacity 150ms cubic-bezier(0.23,1,0.32,1)}
+  @starting-style{.fade{opacity:0}}
+  .rise{
+    opacity:1;transform:translateY(0);
+    transition:opacity 260ms cubic-bezier(0.23,1,0.32,1),
+               transform 260ms cubic-bezier(0.23,1,0.32,1);
+  }
+  @starting-style{.rise{opacity:0;transform:translateY(10px)}}
+
+  /* ---------- 色が満ちる ---------- */
+  .flood{
+    position:fixed;inset:0;z-index:40;pointer-events:none;
+    transform:scaleY(0);transform-origin:bottom;
+    transition:transform 340ms cubic-bezier(0.32,0.72,0,1);
+  }
+  .flood.on{transform:scaleY(1)}
+  .flood.out{opacity:0;transition:opacity 280ms cubic-bezier(0.23,1,0.32,1)}
+  @media (prefers-reduced-motion:reduce){
+    .flood{transition:opacity 120ms linear;transform:none;opacity:0}
+    .flood.on{opacity:1}
+  }
+
+  /* ---------- モック操作バー。本体には入れない ---------- */
+  .mockbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    background:rgba(14,14,15,.92);border-top:1px solid #2a2a2c;
+    font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;font-size:12px;
+  }
+  .mockbar button{
+    font:inherit;font-size:12px;padding:7px 11px;min-height:32px;
+    border:1px solid #34343a;border-radius:8px;
+    background:#1c1c1f;color:#b8b8c0;cursor:pointer;
+  }
+  .mockbar button[aria-pressed="true"]{
+    background:var(--color-ember-orange);border-color:var(--color-ember-orange);
+    color:var(--color-ink-black);font-weight:700;
+  }
+  body.embed .mockbar{display:none}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<div class="mockbar">
+  <button data-go="intercept">問い詰め</button>
+  <button data-go="followup">返し</button>
+  <button data-go="done">引き返した</button>
+  <button data-go="grace">素通り</button>
+</div>
+
+<script>
+  const REASONS = [
+    { id:"hima",    label:"暇つぶし",   group:"impulse",    line:"暇なら、それは自由時間ってこと。", min:15 },
+    { id:"tohi",    label:"逃避",       group:"impulse",    line:"何から逃げてる？",                 min:20 },
+    { id:"shirabe", label:"調べもの",   group:"deliberate", line:"OK、調べものだね。",               min:5  },
+    { id:"work",    label:"勉強や仕事", group:"deliberate", line:"了解、道具として使おう。",         min:10 },
+  ];
+  const R = Object.fromEntries(REASONS.map(r=>[r.id,r]));
+  const root = document.getElementById("root");
+  const q = new URLSearchParams(location.search);
+  if(q.get("embed") === "1") document.body.classList.add("embed");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  function intercept(){
+    root.innerHTML = `
+      <div class="screen fade">
+        <p class="label">INSTAGRAM を開こうとしています</p>
+        <h1 class="display ask">なんで開いたの？</h1>
+        <div class="choices">
+          ${REASONS.map(r=>`
+            <button class="choice ${r.group}" data-r="${r.id}">
+              <span class="dot"></span>
+              <span class="txt">${esc(r.label)}</span>
+              <span class="go">→</span>
+            </button>`).join("")}
+        </div>
+        <p class="context">今日3回目。ここまでInstagramだけで18分、SNS全体で41分（推定）。</p>
+      </div>`;
+    root.querySelectorAll(".choice").forEach(b=>
+      b.addEventListener("click", ()=> flood(b.dataset.r, ()=> followup(b.dataset.r))));
+  }
+
+  function followup(id){
+    const r = R[id];
+    const stay = r.group === "impulse";
+    root.innerHTML = `
+      <div class="screen rise">
+        <span class="tag ${r.group}"><span class="dot"></span>${esc(r.label)}</span>
+        <div class="feature">
+          <h1 class="display say">${esc(r.line)}</h1>
+          ${stay ? `<p class="alt">いつもの1回ぶん（約${r.min}分）があれば、本を1章読むことができる。</p>` : ""}
+        </div>
+        <div class="actions">
+          ${stay
+            ? `<button class="btn btn-primary"   id="stay">やめておく</button>
+               <button class="btn btn-secondary" id="go">それでも開く</button>`
+            : `<button class="btn btn-primary"   id="go">それでも開く</button>
+               <button class="btn btn-secondary" id="stay">やめておく</button>`}
+        </div>
+      </div>`;
+    document.getElementById("stay").addEventListener("click", done);
+    document.getElementById("go").addEventListener("click", intercept);
+  }
+
+  function done(){
+    const opened = 5, resisted = 3;
+    root.innerHTML = `
+      <div class="screen rise">
+        <div class="feature coral">
+          <div class="count">${resisted}</div>
+          <div class="marks">
+            ${Array.from({length:opened},(_,i)=>`<i class="${i<resisted?"on":""}"></i>`).join("")}
+          </div>
+        </div>
+        <div class="done done-head">
+          <h1 class="display done-h">引き返した。今日${resisted}回目のえらい。</h1>
+          <p>このままホーム画面に戻ろう。</p>
+        </div>
+        <span class="link">今日のまとめを見る <span class="arw">→</span></span>
+      </div>`;
+  }
+
+  function grace(){
+    root.innerHTML = `
+      <div class="screen fade">
+        <h1 class="display say">さっき答えたばかり。</h1>
+        <p class="alt">5分間は引き止めない。このままどうぞ。</p>
+      </div>`;
+  }
+
+  function flood(id, then){
+    // Ember Orangeのベタは明色地では刺さりすぎる。無意識側はSunset Coralで満たす
+    const c = R[id].group === "impulse" ? "#ff764c" : "#ffffff";
+    const el = document.createElement("div");
+    el.className = "flood";
+    el.style.background = `linear-gradient(to top, ${c}, color-mix(in srgb, ${c} 35%, #faf6f1))`;
+    document.body.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add("on"));
+    setTimeout(()=>{ then(); el.classList.add("out"); setTimeout(()=> el.remove(), 300); }, 340);
+  }
+
+  const SCREENS = { intercept, followup:()=>followup(q.get("reason")||"hima"), done, grace };
+  document.querySelectorAll("[data-go]").forEach(b=>
+    b.addEventListener("click", ()=>{
+      SCREENS[b.dataset.go]();
+      document.querySelectorAll("[data-go]").forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
+    }));
+  (SCREENS[q.get("screen")] || intercept)();
+</script>
+</body>
+</html>
