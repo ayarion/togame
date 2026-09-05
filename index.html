@@ -176,8 +176,8 @@
   .rf .choice .txt{flex:1;min-width:0}
   /* Prompt Input Bar から借りた円形アクション。押せる場所を形で示す */
   .rf .go{
-    width:34px;height:34px;flex:none;border-radius:50%;
-    display:grid;place-items:center;font-size:14px;line-height:1;
+    width:40px;height:40px;flex:none;border-radius:50%;
+    display:grid;place-items:center;font-size:15px;line-height:1;
     border:1px solid var(--rf-sand);color:var(--rf-pewter);background:var(--rf-canvas);
   }
   .rf .choice.impulse .go{background:var(--rf-ember);border-color:var(--rf-ember);color:var(--rf-white)}
@@ -214,8 +214,8 @@
   @media (prefers-reduced-motion:reduce){.rf .thinking::after{animation:none;opacity:.5}}
   .rf .fu-actions{display:flex;flex-direction:column;gap:10px;margin-top:32px}
   .rf-btn{
-    width:100%;min-height:56px;padding:14px 24px;border-radius:100px;
-    font-family:var(--rf-font);font-size:17px;font-weight:500;letter-spacing:-0.01em;
+    width:100%;min-height:60px;padding:16px 24px;border-radius:100px;
+    font-family:var(--rf-font);font-size:18px;font-weight:500;letter-spacing:-0.01em;
     transition:transform 150ms var(--ease-out), background 150ms var(--ease-out);
   }
   .rf-btn:active{transform:scale(.985)}
@@ -240,8 +240,8 @@
   .rf.done h1{font-size:clamp(24px,6vw,30px);letter-spacing:-0.03em;line-height:1.3;margin-bottom:10px}
   .rf.done p{color:var(--rf-pewter)}
   .rf.done .rf-link{
-    display:inline-block;align-self:flex-start;margin-top:20px;
-    font-family:var(--rf-font);font-size:15px;font-weight:500;color:var(--rf-black);
+    display:inline-flex;align-items:center;min-height:44px;align-self:flex-start;margin-top:20px;
+    font-family:var(--rf-font);font-size:16px;font-weight:500;color:var(--rf-black);
     text-decoration:underline;text-decoration-color:var(--rf-blue);
     text-decoration-thickness:2px;text-underline-offset:4px;
   }
@@ -291,7 +291,7 @@
   nav.tabs{display:flex;gap:20px;border-bottom:1px solid var(--hairline)}
   nav.tabs button{
     position:relative;
-    padding:10px 2px;font-size:14px;font-weight:600;color:var(--ink-3);
+    min-height:44px;padding:10px 4px;font-size:15px;font-weight:600;color:var(--ink-3);
     margin-bottom:-1px;border-radius:0;
     transition:color 160ms var(--ease-out), transform 160ms var(--ease-out);
   }
@@ -435,7 +435,7 @@
   /* ---- 折りたたみ（見出しタップで下にスムーズに展開） ---- */
   .fold-head{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
-    width:100%;text-align:left;
+    width:100%;min-height:44px;text-align:left;
   }
   .fold-head .arrow{
     color:var(--ink-3);font-size:13px;flex:none;
@@ -448,8 +448,8 @@
 
   /* サブページ共通 */
   .back{
-    display:inline-flex;align-items:center;gap:5px;
-    font-size:14px;font-weight:600;color:var(--ink-3);padding:4px 0;margin-bottom:18px;
+    display:inline-flex;align-items:center;gap:5px;min-height:44px;
+    font-size:15px;font-weight:600;color:var(--ink-3);padding:10px 0;margin:-10px 0 12px;
   }
   .back:hover{color:var(--accent)}
   .sub-hero{
@@ -527,10 +527,13 @@
   /* ダッシュボードの空状態CTAだけが使う。介入フローの主ボタンは
      .rf-btn-primary に切り替えたので、この定義とは衝突しない */
   .btn-primary{
-    width:100%;padding:16px;border-radius:100px;
+    width:100%;min-height:56px;padding:16px;border-radius:100px;
     background:var(--accent);color:#fff;font-size:17px;font-weight:500;
   }
   .btn-primary:active{opacity:.85}
+  .btn-primary.btn-secondary-outline{
+    background:transparent;border:1.5px solid var(--accent);color:var(--accent);
+  }
   .empty .btn-primary{margin-top:16px}
 
   /* per-app */
@@ -542,7 +545,10 @@
   .set-card{border:1px solid var(--hairline);border-radius:20px;padding:20px;margin-bottom:14px}
   .set-card .name-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .set-card .name-line strong{font-size:15px;font-weight:500}
-  .del{font-size:12px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+  .del{
+    display:inline-flex;align-items:center;min-height:44px;padding:4px 2px;
+    font-size:13px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px;
+  }
   .field{margin-top:12px}
   .field label{display:block;font-size:12px;color:var(--ink-3);letter-spacing:.06em;margin-bottom:4px}
   input[type="text"],input[type="number"]{
@@ -555,13 +561,13 @@
     border:1px solid var(--hairline);border-radius:6px;background:var(--bg);color:var(--ink);resize:vertical;
   }
   .copy-url{
-    margin-top:12px;width:100%;padding:11px;border:1.5px solid var(--accent);
-    color:var(--accent);border-radius:100px;font-size:14px;font-weight:500;background:var(--accent-soft);
+    margin-top:12px;width:100%;min-height:48px;padding:12px;border:1.5px solid var(--accent);
+    color:var(--accent);border-radius:100px;font-size:15px;font-weight:500;background:var(--accent-soft);
   }
   .copy-url:active{opacity:.8}
   .add-btn{
-    width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:20px;
-    color:var(--ink-2);font-size:14px;font-weight:500;
+    width:100%;min-height:48px;padding:12px;border:1px dashed var(--hairline);border-radius:20px;
+    color:var(--ink-2);font-size:15px;font-weight:500;
   }
   .minutes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .minutes-grid .cell label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
@@ -570,11 +576,14 @@
   .conv-row input[type="number"]{width:74px;flex:none}
   .conv-row .del{flex:none}
   .hint{font-size:12.5px;color:var(--ink-3);line-height:1.8;margin-top:10px}
-  .danger{color:#b8300a;text-decoration:underline;text-underline-offset:2px;font-size:13px}
+  .danger{
+    display:inline-flex;align-items:center;min-height:44px;padding:4px 2px;
+    color:#b8300a;text-decoration:underline;text-underline-offset:2px;font-size:13px;
+  }
 
   details.setup{border:1px solid var(--hairline);border-radius:20px;padding:0 18px}
   details.setup summary{
-    padding:16px 0;font-size:14px;font-weight:500;cursor:pointer;list-style:none;
+    min-height:44px;padding:16px 0;font-size:15px;font-weight:500;cursor:pointer;list-style:none;
     display:flex;justify-content:space-between;align-items:center;
   }
   details.setup summary::after{content:"＋";color:var(--ink-3);font-weight:400}
@@ -616,12 +625,12 @@
   .sheet h3{font-size:17px;font-weight:500;margin-bottom:6px}
   .sheet p{font-size:14px;color:var(--ink-2);margin-bottom:20px}
   .sheet .btn-destructive{
-    width:100%;padding:15px;border-radius:100px;
+    width:100%;min-height:56px;padding:15px;border-radius:100px;
     background:#b8300a;color:#fff;font-size:16px;font-weight:500;
   }
   .sheet .btn-cancel{
-    width:100%;padding:13px;margin-top:8px;
-    font-size:15px;font-weight:500;color:var(--ink-2);
+    width:100%;min-height:48px;padding:13px;margin-top:8px;
+    font-size:16px;font-weight:500;color:var(--ink-2);
   }
 
   /* reduced motion = ゼロではなく「揺れない」。opacityは残しtransformの移動を消す */
@@ -1581,9 +1590,11 @@ function renderEmpty(){
       <div class="empty">
         まだ記録がない。<br>
         設定タブで監視するアプリを登録して、iPhoneのショートカットを作ると、SNSを開くたびに問い詰められるようになる。<br>
-        <button class="btn-primary" id="demo">デモデータで画面を見てみる</button>
+        <button class="btn-primary" id="howto">使い方を見る</button>
+        <button class="btn-primary btn-secondary-outline" id="demo">デモデータで画面を見てみる</button>
       </div>
     </section>`);
+  document.getElementById("howto").addEventListener("click", ()=> swap(()=>renderHowTo(renderEmpty)));
   document.getElementById("demo").addEventListener("click", ()=>{
     const now = Date.now();
     const mk = (dAgo, h, app, reason, kind) => {
@@ -1621,8 +1632,79 @@ function copyText(text){
   }
 }
 
+/* ================= 使い方 ================= */
+
+/* 設定タブとダッシュボードの空状態、両方から来られるので戻り先を引数で受ける */
+function renderHowTo(back){
+  $app.innerHTML = `
+    <div class="screen-rise" style="padding-top:20px">
+      <button class="back" id="howto-back">← 戻る</button>
+      <h1 style="font-size:26px;margin-bottom:6px">使い方</h1>
+      <p class="sub-lead" style="margin-bottom:24px">
+        トガメはSNSを開くたびに理由を聞いてくる。仕組みを作るのは最初の1回だけ。
+      </p>
+
+      <section class="bare" style="margin-bottom:20px">
+        <p style="font-size:14px;line-height:1.9;color:var(--ink-2)">
+          <b>①</b> 設定タブで監視したいSNSを登録してURLをコピーする<br>
+          <b>②</b> iPhoneの「ショートカット」アプリでオートメーションを作り、コピーしたURLを貼る<br>
+          <b>③</b> 以後そのSNSを開くたびトガメが割り込んで理由を聞いてくる
+        </p>
+      </section>
+
+      <details class="setup" style="margin-bottom:12px" open>
+        <summary>① 監視するアプリを登録する</summary>
+        <ol>
+          <li>設定タブを開く</li>
+          <li><b>「＋ アプリを追加」</b>からSNSの名前を入れる（例: Instagram）</li>
+          <li>そのカードの<b>「URLをコピー」</b>を押す。次のショートカット作成で使う</li>
+          <li>できれば<b>URLスキーム</b>（例: <code>instagram://</code>）も入れておく。問い詰めのあと元のSNSへ戻る入口になる</li>
+        </ol>
+      </details>
+
+      <details class="setup" style="margin-bottom:12px">
+        <summary>② ショートカットのオートメーションを作る</summary>
+        <ol>
+          <li>ショートカットアプリ → 下タブ「オートメーション」→ 右上「＋」</li>
+          <li>「App」→「開いている」→ 対象のSNSを選ぶ →「次へ」</li>
+          <li><b>「すぐに実行」</b>を選ぶ（尋ねられると毎回バナーが出る）</li>
+          <li><b>クリップボードを取得</b> → <b>if</b>（クリップボードが <code>togame-pass</code> を含む）を追加</li>
+          <li>その場合：<b>テキスト</b>「済」→ <b>クリップボードにコピー</b>（通行証を消して素通りさせる）</li>
+          <li>その他の場合：<b>URLを開く</b> → ①でコピーしたURLを貼る</li>
+        </ol>
+        <p class="hint">
+          「それでも開く」を押すと通行証（<code>togame-pass</code>）を書いてからSNSに戻る設計。これで「戻る→また開く」の無限ループを防いでいる。
+          手順の詳細やスクリーンショット付きの説明は <a href="SHORTCUTS-SETUP.md" style="color:var(--accent)">SHORTCUTS-SETUP.md</a> を参照。
+        </p>
+      </details>
+
+      <details class="setup" style="margin-bottom:12px">
+        <summary>③ 動作を確認する</summary>
+        <ol>
+          <li>対象のSNSを開く → トガメが出る</li>
+          <li>理由を選ぶ →「それでも開く」を押す</li>
+          <li>SNSが開いて、そのまま使えれば成功（トガメに戻ってこなければOK）</li>
+        </ol>
+      </details>
+
+      <details class="setup" style="margin-bottom:12px">
+        <summary>うまくいかないとき</summary>
+        <ol>
+          <li>毎回確認バナーが出る → オートメーションが「実行前に尋ねる」になっている。「すぐに実行」に変更する</li>
+          <li>ループが直らない → ifの条件が「次を含む」で <code>togame-pass</code> になっているか確認</li>
+          <li>トガメ自体が開かない → 「URLを開く」が【その他の場合】の中に入っているか確認</li>
+          <li>急に何も反応しなくなった → クリップボードに <code>togame-pass</code> が残ったまま。何か別のものを一度コピーすれば直る</li>
+        </ol>
+      </details>
+    </div>`;
+  document.getElementById("howto-back").addEventListener("click", ()=> swap(back));
+}
+
 function renderSettings(){
   chrome("settings", `
+    <section class="bare">
+      <button class="add-btn" id="open-howto">使い方を見る（初めての設定・つまづいたとき）</button>
+    </section>
     <section>
       <h2>監視するアプリ</h2>
       <p class="hint" style="margin:0 0 14px">
@@ -1711,6 +1793,8 @@ function renderSettings(){
       </p>
     </section>
   `);
+
+  document.getElementById("open-howto").addEventListener("click", ()=> swap(()=>renderHowTo(renderSettings)));
 
   /* apps */
   $app.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", ()=>{
