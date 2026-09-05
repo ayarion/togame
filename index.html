@@ -132,6 +132,11 @@
     --rf-pewter:#52545a;
     --rf-sand:#dfddd8;
     --rf-halftone:#524ae9;
+    /* それでもひらくボタン専用。Ember Orangeそのままだと赤寄りに見えて
+       強すぎるという声を受け、彩度と明度を落として朱色寄りにした。
+       黒文字とのコントラストは4.53:1を保っている。これより暗くすると
+       4.5を割るので、押した時の変化は色を暗くせずopacityだけ落とす */
+    --rf-btn-red:#d1512e;
     --rf-font:'Inter','Noto Sans JP','Hiragino Sans','Yu Gothic UI','Segoe UI',sans-serif;
     --rf-pad:20px;
     --rf-card-pad:32px;
@@ -214,9 +219,11 @@
     transition:transform 150ms var(--ease-out), background 150ms var(--ease-out);
   }
   .rf-btn:active{transform:scale(.985)}
-  /* 白文字はEmber Orange上で3.56:1しか出ず本文基準に届かない。Ink Blackなら5.42:1 */
-  .rf-btn-primary{background:var(--rf-ember);border:1.5px solid var(--rf-ember);color:var(--rf-black)}
-  .rf-btn-primary:active{background:var(--rf-rust);border-color:var(--rf-rust)}
+  /* 白文字は4.53:1しか出ない --rf-btn-red 上でも本文基準ぎりぎり足りないので
+     Ink Blackを使う（4.53:1）。押した時は色を暗くすると基準を割るので
+     opacityだけ落とす */
+  .rf-btn-primary{background:var(--rf-btn-red);border:1.5px solid var(--rf-btn-red);color:var(--rf-black)}
+  .rf-btn-primary:active{opacity:.85}
   .rf-btn-secondary{background:transparent;border:1.5px solid var(--rf-sand);color:var(--rf-pewter)}
   /* やめておくボタンだけは主従（primary/secondaryの入れ替わり）に関わらず
      常にElectric Blue。白文字/文字色に使うとどちらもコントラスト基準を
@@ -1039,7 +1046,7 @@ function renderFollowup(appId, reason){
   const altLine = (!useAgent && fu.stay && alt.length)
     ? `いつもの1回ぶん（約${m}分）があれば、${alt.join("と")}ができる。` : "";
 
-  const openBtn  = `<button class="rf-btn ${fu.stay ? "rf-btn-secondary" : "rf-btn-primary"}" id="go">それでも開く</button>`;
+  const openBtn  = `<button class="rf-btn ${fu.stay ? "rf-btn-secondary" : "rf-btn-primary"}" id="go">それでもひらく</button>`;
   const stayBtn  = `<button class="rf-btn ${fu.stay ? "rf-btn-primary" : "rf-btn-secondary"}" id="stay">やめておく</button>`;
   const impulse  = r.group === "無意識";
 
@@ -1677,7 +1684,7 @@ function renderSettings(){
     <section>
       <h2>引き止めない時間</h2>
       <div class="field">
-        <label for="grace">「それでも開く」を選んだあと、再質問しない時間（分）</label>
+        <label for="grace">「それでもひらく」を選んだあと、再質問しない時間（分）</label>
         <input type="number" id="grace" value="${settings.graceMin}" min="1" max="120" inputmode="numeric">
       </div>
     </section>
