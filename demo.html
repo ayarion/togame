@@ -148,6 +148,15 @@
   /* ピル形状は守りつつ枠をSandに落とし、引き止める設計の主従を保つ */
   .btn-secondary{background:transparent;border:1.5px solid var(--sand);color:var(--pewter)}
 
+  /* やめておくボタンだけ「もう一度ためす」の下線と同じElectric Blueに揃える。
+     主従（primary/secondaryの入れ替わり）はそのまま、色だけを固定で上書きする。
+     白文字は3.17:1で本文基準に届かないので、他ボタンと同じくInk Black文字にする */
+  #stay.btn-primary{background:var(--electric-blue);border-color:var(--electric-blue);color:var(--ink-black)}
+  #stay.btn-primary:active{background:#1c7ee0;border-color:#1c7ee0}
+  /* 文字をElectric Blueにすると2.94:1で大文字基準にも届かない。
+     ほかの箇所（もう一度ためすのリンク）と同じく、文字はInk Blackのまま枠だけ効かせる */
+  #stay.btn-secondary{border-color:var(--electric-blue);color:var(--ink-black)}
+
   /* ---------- 引き返した ----------
      ここだけCalderaから。ドット地の上に数字が直に乗る。カードには入れない */
   .halftone{
