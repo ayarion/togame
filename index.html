@@ -1,9 +1,16 @@
+<meta charset="utf-8">
 <title>トガメ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='6' cy='10' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(-30 6 10)'/%3E%3Cellipse cx='26' cy='10' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(30 26 10)'/%3E%3Cellipse cx='6' cy='23' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(30 6 23)'/%3E%3Cellipse cx='26' cy='23' rx='3' ry='2.2' fill='%232f8f5b' transform='rotate(-30 26 23)'/%3E%3Cpath d='M16 29 L13.3 24.6 L18.7 24.6 Z' fill='%232f8f5b'/%3E%3Ccircle cx='16' cy='5.2' r='3.4' fill='%232f8f5b'/%3E%3Ccircle cx='14.8' cy='4.5' r='0.55' fill='%230b3d21'/%3E%3Ccircle cx='17.2' cy='4.5' r='0.55' fill='%230b3d21'/%3E%3Ccircle cx='16' cy='17' r='12' fill='%23146b3a'/%3E%3Ccircle cx='16' cy='17' r='9' fill='%23f2fbf6'/%3E%3Cg stroke='%2312321f' stroke-width='1.1' stroke-linecap='round'%3E%3Cline x1='16' y1='9.2' x2='16' y2='10.6'/%3E%3Cline x1='16' y1='23.4' x2='16' y2='24.8'/%3E%3Cline x1='8.2' y1='17' x2='9.6' y2='17'/%3E%3Cline x1='22.4' y1='17' x2='23.8' y2='17'/%3E%3C/g%3E%3Cline x1='16' y1='17' x2='16' y2='12' stroke='%2312321f' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='17' x2='19.4' y2='15.1' stroke='%2312321f' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='17' r='1' fill='%2312321f'/%3E%3C/svg%3E">
+
+<!-- 介入フロー（問い詰め・返し・引き返した・素通り）だけで使う書体。
+     ダッシュボード/設定はシステムフォントのまま変えていない -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -91,57 +98,153 @@
     main>section{opacity:0;transform:translateY(8px)}
   }
 
-  /* ---- intercept ---- */
-  .intercept{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:48px 0;gap:0}
-  .intercept .eyebrow{margin-bottom:10px}
-  .intercept h1{margin-bottom:36px}
-  .choices{display:flex;flex-direction:column;gap:10px}
-  .choice{
-    display:flex;align-items:center;gap:14px;
-    width:100%;padding:16px 18px;text-align:left;
-    border:1px solid var(--hairline);border-radius:10px;
-    font-size:17px;font-weight:600;background:var(--bg);
-    transition:transform 160ms var(--ease-out), background 160ms var(--ease-out);
-  }
-  .choice:active{background:var(--hairline-2);transform:scale(0.98)}
-  .dot{width:10px;height:10px;border-radius:50%;flex:none}
-  .context-line{margin-top:28px;font-size:13px;color:var(--ink-3)}
+  /* ---- 介入フロー（問い詰め・返し・引き返した・素通り）----
+     Replitデザインシステムをここだけに適用する。ダッシュボード/設定は
+     :root の --ink / --accent / --r-* / .dot / .btn-primary をそのまま使っていて
+     このスコープの外なので、色は .rf にローカルなカスタムプロパティとして
+     持たせ、既存トークンには一切触れない。
+     .intercept / .screen-rise 自体は上のアニメーション定義（頻度で強度を
+     変える設計）をそのまま使う。ここで足すのは見た目のレイヤーだけ */
+  .rf{
+    --rf-ember:#ff3c00;
+    --rf-coral:#ff764c;
+    --rf-peach:#ffb199;
+    --rf-rust:#ec4e02;
+    --rf-blue:#2492ff;
+    --rf-canvas:#faf6f1;
+    --rf-white:#ffffff;
+    --rf-black:#0e0e0f;
+    --rf-pewter:#52545a;
+    --rf-sand:#dfddd8;
+    --rf-halftone:#524ae9;
+    --rf-font:'Inter','Noto Sans JP','Hiragino Sans','Yu Gothic UI','Segoe UI',sans-serif;
+    --rf-pad:20px;
+    --rf-card-pad:32px;
 
-  /* ---- followup ---- */
-  .followup{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:48px 0}
-  .followup .reason-tag{
-    display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
-    color:var(--ink-2);margin-bottom:18px;
+    display:flex;flex-direction:column;justify-content:center;
+    min-height:100vh;
+    margin:0 -24px calc(-48px - env(safe-area-inset-bottom));
+    padding:32px var(--rf-pad) calc(80px + env(safe-area-inset-bottom));
+    background:var(--rf-canvas);color:var(--rf-pewter);
+    font-family:var(--rf-font);font-weight:400;font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
   }
-  .followup h1{margin-bottom:14px}
-  .followup .alt{color:var(--ink-3);font-size:13px}
+  @media (max-width:479px){ .rf{ --rf-pad:16px; --rf-card-pad:26px; } }
+  .rf .eyebrow{color:var(--rf-pewter);margin-bottom:14px}
+  .rf h1{
+    font-family:var(--rf-font);font-weight:500;letter-spacing:-0.04em;line-height:1.16;
+    color:var(--rf-black);
+  }
+  .rf button:focus-visible{outline-color:var(--rf-blue)}
+
+  /* ---- 問い詰め ---- */
+  .rf h1{font-size:clamp(36px,9vw,52px);margin-bottom:32px}
+  .rf .choices{display:flex;flex-direction:column;gap:12px}
+  .rf .choice{
+    display:flex;align-items:center;gap:12px;
+    width:100%;min-height:64px;padding:18px 20px;text-align:left;
+    background:var(--rf-white);border:1px solid var(--rf-sand);border-radius:20px;
+    font-family:var(--rf-font);font-size:16px;font-weight:500;color:var(--rf-black);
+    transition:transform 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  }
+  .rf .choice:active{background:var(--rf-white);transform:scale(.985)}
+  /* 無意識側はEmberの枠で囲い、目的あり側はSandの細線で静かに置く。
+     4色を使い分けていた元の色分けは、群（無意識/目的あり）の告発に統一する */
+  .rf .choice.impulse{border:1.5px solid var(--rf-ember)}
+  .rf-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--rf-sand)}
+  .rf .choice.impulse .rf-dot{background:var(--rf-ember)}
+  .rf .choice .txt{flex:1;min-width:0}
+  /* Prompt Input Bar から借りた円形アクション。押せる場所を形で示す */
+  .rf .go{
+    width:34px;height:34px;flex:none;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;line-height:1;
+    border:1px solid var(--rf-sand);color:var(--rf-pewter);background:var(--rf-canvas);
+  }
+  .rf .choice.impulse .go{background:var(--rf-ember);border-color:var(--rf-ember);color:var(--rf-white)}
+  .rf .context-line{margin-top:26px;font-size:14px;color:var(--rf-pewter)}
+
+  /* ---- 返し ---- */
+  .rf .reason-tag{
+    display:inline-flex;align-self:flex-start;align-items:center;gap:7px;
+    margin-bottom:16px;padding:5px 11px;border-radius:6px;
+    background:var(--rf-white);border:1px solid var(--rf-sand);
+    font-size:12px;font-weight:500;color:var(--rf-black);
+  }
+  .rf .reason-tag .rf-dot{width:7px;height:7px}
+  .rf .reason-tag.impulse .rf-dot{background:var(--rf-ember)}
+  /* フィーチャーカード。1画面に1枚だけ置く句読点。Peach Blush上ではPewterが
+     4.33:1で本文基準を割るので、Ink Blackを混ぜて6.9:1にする */
+  .rf .feature{border-radius:28px;padding:var(--rf-card-pad);background:var(--rf-peach)}
+  /* AIの一言でも固定のfu.lineでも、見出しはこのカードの中の同じ役割。
+     .agent-h1の有無で大きさが変わらないよう、共通の親(.feature)側でサイズを決める */
+  .rf .feature h1{font-size:clamp(28px,7.5vw,40px);letter-spacing:-0.035em;margin-bottom:0}
+  .rf .feature .alt{
+    margin-top:16px;color:color-mix(in srgb, var(--rf-black) 78%, var(--rf-peach));
+  }
   /* AIの一言が見出しそのものになる。届くまでは点を出しておき、
      失敗したら固定のセリフに差し替わる（見出しが空のままにならないように） */
-  .followup h1.agent-h1{min-height:1.5em;white-space:pre-wrap}
-  .followup .agent-note{margin-top:10px;font-size:12px;color:var(--r-hima);line-height:1.7}
-  .followup .thinking::after{
+  .rf h1.agent-h1{min-height:1.5em;white-space:pre-wrap}
+  .rf .agent-note{margin-top:10px;font-size:12px;color:var(--rf-rust);line-height:1.7}
+  .rf .thinking::after{
     content:"";display:inline-block;width:9px;height:9px;border-radius:50%;
-    background:var(--ink-3);animation:agent-pulse 1.1s ease-in-out infinite;vertical-align:middle;
+    background:color-mix(in srgb, var(--rf-black) 55%, transparent);
+    animation:agent-pulse 1.1s ease-in-out infinite;vertical-align:middle;
   }
   @keyframes agent-pulse{0%,100%{opacity:.18}50%{opacity:1}}
-  @media (prefers-reduced-motion:reduce){.followup .thinking::after{animation:none;opacity:.5}}
-  .fu-actions{display:flex;flex-direction:column;gap:14px;margin-top:40px}
-  .btn-primary{
-    width:100%;padding:16px;border-radius:10px;
-    background:var(--accent);color:#fff;font-size:17px;font-weight:700;
+  @media (prefers-reduced-motion:reduce){.rf .thinking::after{animation:none;opacity:.5}}
+  .rf .fu-actions{display:flex;flex-direction:column;gap:10px;margin-top:32px}
+  .rf-btn{
+    width:100%;min-height:56px;padding:14px 24px;border-radius:100px;
+    font-family:var(--rf-font);font-size:17px;font-weight:500;letter-spacing:-0.01em;
+    transition:transform 150ms var(--ease-out), background 150ms var(--ease-out);
   }
-  .btn-primary:active{opacity:.85}
-  .btn-quiet{
-    width:100%;padding:10px;font-size:14px;color:var(--ink-3);
-    text-decoration:underline;text-underline-offset:3px;
-  }
+  .rf-btn:active{transform:scale(.985)}
+  /* 白文字はEmber Orange上で3.56:1しか出ず本文基準に届かない。Ink Blackなら5.42:1 */
+  .rf-btn-primary{background:var(--rf-ember);border:1.5px solid var(--rf-ember);color:var(--rf-black)}
+  .rf-btn-primary:active{background:var(--rf-rust);border-color:var(--rf-rust)}
+  .rf-btn-secondary{background:transparent;border:1.5px solid var(--rf-sand);color:var(--rf-pewter)}
+  /* やめておくボタンだけは主従（primary/secondaryの入れ替わり）に関わらず
+     常にElectric Blue。白文字/文字色に使うとどちらもコントラスト基準を
+     割るので、他ボタンと同じくInk Black文字のまま枠と塗りだけ効かせる */
+  #stay.rf-btn-primary{background:var(--rf-blue);border-color:var(--rf-blue);color:var(--rf-black)}
+  #stay.rf-btn-primary:active{background:#1c7ee0;border-color:#1c7ee0}
+  #stay.rf-btn-secondary{border-color:var(--rf-blue);color:var(--rf-black)}
 
-  /* ---- resist done ---- */
-  .done{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-height:100vh;padding:48px 0}
-  .done .big{font-size:56px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:20px}
-  .done h1{margin-bottom:12px}
-  .done p{color:var(--ink-2)}
-  .done .btn-quiet{text-align:left;padding:24px 0 0;width:auto}
+  /* ---- 引き返した／それでも開く／素通り ----
+     .rf と .done はどのレンダーでも同じ要素に付く（class="rf done ..."）ので
+     ここは子孫セレクタ（.rf .done）ではなく複合セレクタ（.rf.done）で書く。
+     スペースを入れると「.rf の子孫にある .done」を探すことになり一致しない */
+  .rf.done{position:relative}
+  .rf.done h1{font-size:clamp(24px,6vw,30px);letter-spacing:-0.03em;line-height:1.3;margin-bottom:10px}
+  .rf.done p{color:var(--rf-pewter)}
+  .rf.done .rf-link{
+    display:inline-block;align-self:flex-start;margin-top:20px;
+    font-family:var(--rf-font);font-size:15px;font-weight:500;color:var(--rf-black);
+    text-decoration:underline;text-decoration-color:var(--rf-blue);
+    text-decoration-thickness:2px;text-underline-offset:4px;
+  }
+  /* 引き返した画面だけ、Calderaのハーフトーンドット地を敷き、数字を直に乗せる。
+     それでも開く／素通りの画面は開いてしまった側なので、この演出は付けない */
+  .rf.done.win::before{
+    /* position:absoluteの起点は relative 親のパディング境界。inset:0だけで
+       .rf自身のpadding（上下非対称・safe-area込み）の外周までちょうど埋まる */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:radial-gradient(
+      color-mix(in srgb, var(--rf-halftone) 26%, transparent) 1.7px, transparent 1.8px);
+    background-size:24px 24px;
+  }
+  .rf .win-body{position:relative}
+  .rf .count{
+    font-family:var(--rf-font);font-weight:500;
+    font-size:clamp(76px,17vw,108px);line-height:.92;letter-spacing:-0.06em;
+    color:var(--rf-ember);margin-bottom:18px;
+  }
+  .rf .marks{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:24px}
+  .rf .marks i{
+    width:10px;height:10px;border-radius:50%;display:block;background:transparent;
+    border:1.5px solid color-mix(in srgb, var(--rf-black) 26%, transparent);
+  }
+  .rf .marks i.on{background:var(--rf-ember);border-color:var(--rf-ember)}
 
   /* ---- dashboard chrome ----
      apple-design: ナビは半透明マテリアル。コンテンツが下を流れる */
@@ -353,6 +456,13 @@
     border:1px dashed var(--hairline);border-radius:12px;padding:28px 22px;
     color:var(--ink-2);font-size:14px;line-height:1.9;
   }
+  /* ダッシュボードの空状態CTAだけが使う。介入フローの主ボタンは
+     .rf-btn-primary に切り替えたので、この定義とは衝突しない */
+  .btn-primary{
+    width:100%;padding:16px;border-radius:10px;
+    background:var(--accent);color:#fff;font-size:17px;font-weight:700;
+  }
+  .btn-primary:active{opacity:.85}
   .empty .btn-primary{margin-top:16px}
 
   /* per-app */
@@ -455,6 +565,9 @@
     button:active,.choice:active{transform:none;opacity:.7}
     .fold-body{transition:none}
     .fold-head .arrow{transition:none}
+    /* .rf .choice:active と .rf-btn:active は .choice:active / button:active より
+       詳細度が高く、この上のルールに勝ってしまう。同じ強さで打ち消す */
+    .rf .choice:active,.rf-btn:active{transform:none;opacity:.7}
   }
 </style>
 
@@ -594,6 +707,11 @@ function toast(msg){
 /* 収まる項目の中から選ぶ。分数の大きい順に決め打ちだと、同じ理由では毎回
    同じ項目しか出てこず「SPIの話しかされない」状態になるので、
    収まるものをシャッフルしてから詰める */
+/* 呼び出し側はどこも「〜ができる。」のように名詞で受けて文を結ぶが、
+   conversionsには「本を20ページ読む」のような動詞止めの項目名も混ざっていて、
+   そのまま繋ぐと「本を20ページ読むができる。」になってしまう。
+   ひらがなのう段止まりを動詞とみなし、そこにだけ「こと」を挟んで名詞化する */
+const needsKoto = s => /[うくぐすずつづぬふぶむゆる]$/.test(s);
 function couldHaveText(totalMin, shuffle){
   let items = settings.conversions.filter(c=>c.min>0 && c.min<=totalMin);
   items = shuffle
@@ -606,7 +724,8 @@ function couldHaveText(totalMin, shuffle){
     const n = Math.floor(rest / it.min);
     if(n >= 1){
       // 「〜を作る」のような項目名だと「を」が重複するので括弧書きにする
-      done.push(n > 1 ? `${it.name}（${n}回ぶん）` : it.name);
+      const label = n > 1 ? `${it.name}（${n}回ぶん）` : it.name;
+      done.push(needsKoto(it.name) ? `${label}こと` : label);
       rest -= n * it.min;
     }
   }
@@ -799,13 +918,15 @@ function renderIntercept(appId){
     : `今日${nth}回目。ここまで${detail}（推定）。`;
 
   $app.innerHTML = `
-    <div class="intercept">
+    <div class="rf intercept">
       <p class="eyebrow">${esc(name.toUpperCase())} を開こうとしています</p>
       <h1>なんで開いたの？</h1>
       <div class="choices">
         ${REASONS.map(r=>`
-          <button class="choice" data-reason="${r.id}">
-            <span class="dot" style="background:${r.color}"></span>${r.label}
+          <button class="choice ${r.group==="無意識" ? "impulse" : ""}" data-reason="${r.id}">
+            <span class="rf-dot"></span>
+            <span class="txt">${esc(r.label)}</span>
+            <span class="go">→</span>
           </button>`).join("")}
       </div>
       <p class="context-line">${esc(ctx)}</p>
@@ -857,17 +978,20 @@ function renderFollowup(appId, reason){
   const altLine = (!useAgent && fu.stay && alt.length)
     ? `いつもの1回ぶん（約${m}分）があれば、${alt.join("と")}ができる。` : "";
 
-  const openBtn  = `<button class="${fu.stay ? "btn-quiet" : "btn-primary"}" id="go">それでも開く</button>`;
-  const stayBtn  = `<button class="${fu.stay ? "btn-primary" : "btn-quiet"}" id="stay">やめておく</button>`;
+  const openBtn  = `<button class="rf-btn ${fu.stay ? "rf-btn-secondary" : "rf-btn-primary"}" id="go">それでも開く</button>`;
+  const stayBtn  = `<button class="rf-btn ${fu.stay ? "rf-btn-primary" : "rf-btn-secondary"}" id="stay">やめておく</button>`;
+  const impulse  = r.group === "無意識";
 
   $app.innerHTML = `
-    <div class="followup screen-rise">
-      <span class="reason-tag"><span class="dot" style="background:${r.color}"></span>${r.label}</span>
-      ${useAgent
-        ? `<h1 class="agent-h1 thinking" id="agent-line" aria-live="polite"></h1>
-           <p class="agent-note" id="agent-note" hidden></p>`
-        : `<h1>${esc(fu.line)}</h1>`}
-      ${altLine ? `<p class="alt">${esc(altLine)}</p>` : ""}
+    <div class="rf followup screen-rise">
+      <span class="reason-tag ${impulse ? "impulse" : ""}"><span class="rf-dot"></span>${esc(r.label)}</span>
+      <div class="feature">
+        ${useAgent
+          ? `<h1 class="agent-h1 thinking" id="agent-line" aria-live="polite"></h1>
+             <p class="agent-note" id="agent-note" hidden></p>`
+          : `<h1>${esc(fu.line)}</h1>`}
+        ${altLine ? `<p class="alt">${esc(altLine)}</p>` : ""}
+      </div>
       <div class="fu-actions">
         ${fu.stay ? stayBtn + openBtn : openBtn + stayBtn}
       </div>
@@ -904,19 +1028,27 @@ function allowAndOpen(appId){
     if(a && a.scheme){
       location.href = a.scheme;
     }else{
-      $app.innerHTML = `<div class="done screen-rise"><h1>どうぞ。</h1><p>ホームに戻って${esc(appName(appId))}を開いてOK。${settings.graceMin}分間は引き止めない。</p></div>`;
+      $app.innerHTML = `<div class="rf done screen-rise"><h1>どうぞ。</h1><p>ホームに戻って${esc(appName(appId))}を開いてOK。${settings.graceMin}分間は引き止めない。</p></div>`;
     }
   });
 }
 
 function renderResistDone(){
-  const wins = eventsOn(todayKey()).filter(e=>e.kind==="resist").length;
+  // 「勝った」側だけドット地を敷く。今日の他の出来事も点で並べ、
+  // バッジやレベルではなく事実の積み上がりだけを見せる
+  const todayEvs = eventsOn(todayKey());
+  const wins = todayEvs.filter(e=>e.kind==="resist").length;
   $app.innerHTML = `
-    <div class="done screen-rise">
-      <div class="big">${wins}</div>
-      <h1>引き返した。今日${wins}回目のえらい。</h1>
-      <p>このままホーム画面に戻ろう。</p>
-      <button class="btn-quiet" id="to-dash">今日のまとめを見る →</button>
+    <div class="rf done win screen-rise">
+      <div class="win-body">
+        <div class="count">${wins}</div>
+        <div class="marks">
+          ${todayEvs.map(e=>`<i class="${e.kind==="resist" ? "on" : ""}"></i>`).join("")}
+        </div>
+        <h1>引き返した。今日${wins}回目のえらい。</h1>
+        <p>このままホーム画面に戻ろう。</p>
+        <button class="rf-link" id="to-dash">今日のまとめを見る →</button>
+      </div>
     </div>`;
   document.getElementById("to-dash").addEventListener("click", ()=>{
     history.replaceState(null,"",location.pathname);
@@ -1553,9 +1685,9 @@ function renderSettings(){
 function renderGrace(appId){
   const a = settings.apps.find(a=>a.id===appId);
   const backBtn = (a && a.scheme)
-    ? `<button class="btn-quiet" id="back">${esc(appName(appId))}に戻る →</button>` : "";
+    ? `<button class="rf-link" id="back">${esc(appName(appId))}に戻る →</button>` : "";
   $app.innerHTML = `
-    <div class="done screen-rise">
+    <div class="rf done screen-rise">
       <h1>さっき答えたばかり。</h1>
       <p>あと${settings.graceMin}分は引き止めない。そのまま${esc(appName(appId))}を使ってOK。</p>
       ${backBtn}
