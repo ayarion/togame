@@ -14,26 +14,41 @@
 
 <style>
   :root{
-    --bg:#ffffff;
-    --page-bg:#eceef1;
-    --ink:#17171a;
-    --ink-2:#55565c;
-    --ink-3:#8e8f96;
-    --hairline:#e8e8ec;
-    --hairline-2:#f2f2f5;
-    --accent:#1c5cab;
-    --accent-deep:#0e3a72;
-    --accent-soft:#eef4fc;
-    /* 理由は2系統に統一。無意識＝赤／目的あり＝青（同系内は濃淡で区別） */
-    --r-hima:#d94a45;
-    --r-tohi:#ef8c86;
-    --r-shirabe:#2f7fd0;
-    --r-work:#8fbcea;
-    --tag-red-bg:#fdeceb;
-    --tag-red-ink:#c0403b;
-    --tag-blue-bg:#eaf2fc;
-    --tag-blue-ink:#1f66ad;
-    --good:#006300;
+    /* ダッシュボード/設定も介入フローと同じReplit系パレットに揃える。
+       変数名は既存のまま残し、値だけ差し替えることで、下の何百行もの
+       ルールを1つずつ書き換えずに済ませている */
+    --bg:#ffffff;              /* Pure White */
+    --page-bg:#faf6f1;         /* Warm Canvas */
+    --ink:#0e0e0f;             /* Ink Black */
+    --ink-2:#52545a;           /* Pewter */
+    --ink-3:#8f9096;           /* Pewterを少し明るくした版 */
+    --hairline:#dfddd8;        /* Sand */
+    --hairline-2:#ece9e3;      /* Sandを少し明るくした版 */
+    /* accentは「引き返した＝安全な選択」を指す色として、介入フローの
+       やめておくボタンと同じElectric Blueの系統にする。Ember Orangeは
+       介入フロー側で衝動/警戒の意味を背負っているので、ここでは使わない。
+       ただし素のElectric Blue #2492ffは白地の小さな文字だと3.17:1しか
+       出ず、タブの文字やカードのラベルなど本文サイズで使う箇所が多いので
+       濃くしたトーンを基準値にする（5.6:1、装飾用に-soft/-brightを別で持つ） */
+    --accent:#1668b8;
+    --accent-deep:#0d4d8f;
+    --accent-soft:#e8f2ff;
+    --accent-bright:#2492ff;
+    /* 理由は2系統4色のまま。無意識＝赤系（Ember/Burnt Rust）／目的あり＝
+       青系（Electric Blueの濃淡）。ただしダッシュボードではこの色を
+       ドットや棒グラフの塗りだけでなく白文字の下地（ヒートマップ）にも
+       使うため、介入フローの鮮やかな値そのままだと白文字が3.6:1前後
+       までしか出ない。ここだけ少し沈めて4.5:1以上を確保する */
+    --r-hima:#d43600;
+    --r-tohi:#a82f00;
+    --r-shirabe:#1668b8;
+    --r-work:#3d6ea8;
+    --tag-red-bg:#ffe4d9;
+    --tag-red-ink:#a82c00;
+    --tag-blue-bg:#e8f2ff;
+    --tag-blue-ink:#1668b8;
+    --good:#1668b8;
+    --font-ui:'Inter','Noto Sans JP','Hiragino Sans','Yu Gothic UI','Segoe UI',sans-serif;
     /* animations.dev: 標準イージングは弱いのでカスタムカーブを使う */
     --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
@@ -42,7 +57,7 @@
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{background:var(--page-bg)}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+    font-family:var(--font-ui);
     color:var(--ink);
     font-size:16px;
     line-height:1.7;
@@ -55,7 +70,7 @@
     font-weight:600;
   }
   h1{font-size:28px;font-weight:700;line-height:1.35;letter-spacing:-0.01em;text-wrap:balance;word-break:auto-phrase}
-  h2{font-size:17px;font-weight:700;letter-spacing:.01em;color:var(--ink);margin-bottom:14px}
+  h2{font-size:17px;font-weight:500;letter-spacing:-0.02em;color:var(--ink);margin-bottom:14px}
 
   button{
     font:inherit;color:inherit;background:none;border:none;cursor:pointer;
@@ -251,7 +266,7 @@
   .chrome-top{
     position:sticky;top:0;z-index:10;
     margin:0 -24px;padding:0 24px;
-    background:rgba(236,238,241,.78);
+    background:rgba(250,246,241,.78);
     -webkit-backdrop-filter:blur(20px) saturate(180%);
     backdrop-filter:blur(20px) saturate(180%);
   }
@@ -289,6 +304,42 @@
 
   section{margin-bottom:36px}
 
+  /* ---- おじさんマスコット ----
+     今日の結果（開いた回数 / 引き返した回数）で3態を出し分ける。
+     絵はcircle/rect/ellipse/短いpathだけで組んだオリジナルのSVGで、
+     実在の素材からのトレースではない（依頼されたOJIMATEはこの環境の
+     ネットワーク制限で参照できなかったため）。3ポーズぶんの座標を
+     それぞれ直接持たせてあり、CSSの変形で1体を無理に使い回してはいない */
+  .oji-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 4px}
+  .oji-stage{height:118px;display:flex;align-items:flex-end}
+  .oji-stage svg{height:100%;width:auto;display:block}
+  .oji-caption{font-size:13px;font-weight:500;color:var(--ink-2)}
+
+  .oji .oj-rig{transform-origin:70px 96px}
+  /* standing: 微かな呼吸ゆらぎだけ */
+  .oji.mood-stand .oj-rig{animation:oj-breathe 3.2s ease-in-out infinite}
+  @keyframes oj-breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  /* dancing: 弾んで左右に振れる。星は明滅をずらして散らす */
+  .oji.mood-dance .oj-rig{animation:oj-bop .55s ease-in-out infinite}
+  @keyframes oj-bop{
+    0%,100%{transform:translateY(0) rotate(-6deg)}
+    50%{transform:translateY(-10px) rotate(6deg)}
+  }
+  .oji .oj-sparkle{animation:oj-twinkle 1.1s ease-in-out infinite}
+  .oji .oj-sparkle.s2{animation-delay:.25s}
+  .oji .oj-sparkle.s3{animation-delay:.5s}
+  .oji .oj-sparkle.s4{animation-delay:.75s}
+  @keyframes oj-twinkle{0%,100%{opacity:.15;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+  /* lying: 潰れて呼吸するだけ。zzzがゆっくり明滅する */
+  .oji.mood-lying .oj-rig{transform-origin:95px 70px;animation:oj-lie-breathe 2.6s ease-in-out infinite}
+  @keyframes oj-lie-breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.015)}}
+  .oji .oj-zzz{animation:oj-zzz 2.2s ease-in-out infinite}
+  @keyframes oj-zzz{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+  @media (prefers-reduced-motion:reduce){
+    .oji .oj-rig,.oji .oj-sparkle,.oji .oj-zzz{animation:none}
+    .oji .oj-sparkle{opacity:.55}
+  }
+
   /* hero */
   .hero-num{font-size:56px;font-weight:700;line-height:1.05;letter-spacing:-0.02em}
   .hero-num .unit{font-size:20px;font-weight:600;color:var(--ink-2);margin-left:2px}
@@ -299,46 +350,50 @@
   .counts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .count-block{
     display:flex;flex-direction:column;align-items:flex-start;gap:2px;
-    padding:14px 14px 12px;border-radius:14px;text-align:left;
-    background:var(--hairline-2);
+    padding:16px 16px 14px;border-radius:20px;text-align:left;
+    background:var(--hairline-2);border:1px solid transparent;
     transition:background 160ms var(--ease-out), transform 160ms var(--ease-out);
   }
-  .count-block:hover{background:#e9e9ee}
+  .count-block:hover{background:#f0ece4}
   .count-block:active{transform:scale(0.98)}
   .count-block .cnum{
-    font-size:40px;font-weight:700;line-height:1.1;letter-spacing:-0.02em;
+    font-family:var(--font-ui);font-size:40px;font-weight:500;line-height:1.1;letter-spacing:-0.03em;
     color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
-  .count-block .cunit{font-size:17px;font-weight:600;margin-left:2px}
+  .count-block .cunit{font-size:17px;font-weight:500;margin-left:2px}
   .count-block .clabel{
     display:inline-flex;align-items:center;gap:3px;
-    font-size:14px;font-weight:600;color:var(--ink-2);
+    font-size:14px;font-weight:500;color:var(--ink-2);
   }
   .count-block .chev{color:var(--ink-3);font-weight:400}
   /* 引き返した＝青。開いた＝グレー（逃避の赤と衝突させない） */
   .count-block.win .cnum,
   .count-block.win .clabel{color:var(--accent)}
   .count-block.win{background:var(--accent-soft)}
-  .count-block.win:hover{background:#e3edfa}
+  .count-block.win:hover{background:#d8ecff}
   .count-block.win .chev{color:var(--accent)}
 
   /* 溶けた時間は推定値なので主役から降ろす（ラベルを上・大きく、数字は小さく） */
-  .melt-label{font-size:16px;font-weight:600;color:var(--ink-2);margin-bottom:2px}
-  .melt-num{font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
-  .melt-num .unit{font-size:15px;font-weight:600;color:var(--ink-2);margin-left:2px}
+  .melt-label{font-size:16px;font-weight:500;color:var(--ink-2);margin-bottom:2px}
+  .melt-num{
+    font-family:var(--font-ui);font-size:32px;font-weight:500;line-height:1.15;
+    letter-spacing:-0.03em;font-variant-numeric:tabular-nums;
+  }
+  .melt-num .unit{font-size:15px;font-weight:500;color:var(--ink-2);margin-left:2px}
 
   /* 7日間の要約 */
   .week-stats{margin-top:18px;border-top:1px solid var(--hairline-2);padding-top:6px}
 
-  /* ---- グレー地に白カードを並べるレイアウト ---- */
+  /* ---- 暖色地に白カードを並べるレイアウト。境界線1本で区切る（影は使わない） ---- */
   main > section{
-    background:var(--bg);border-radius:16px;padding:20px 18px;margin-bottom:14px;
+    background:var(--bg);border:1px solid var(--hairline);
+    border-radius:20px;padding:22px 20px;margin-bottom:14px;
   }
-  main > section.bare{background:transparent;padding:0}
+  main > section.bare{background:transparent;padding:0;border:none}
 
   /* 理由につく「無意識 / 目的あり」バッジ */
   .tag{
-    font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;
+    font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;
     white-space:nowrap;letter-spacing:.02em;
   }
   .tag.mui{background:var(--tag-red-bg);color:var(--tag-red-ink)}
@@ -347,20 +402,23 @@
   /* 理由行：左に色ドット＋名前＋バッジ、右に回数と分数 */
   .rsn-row{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid var(--hairline-2)}
   .rsn-row:last-child{border-bottom:none}
-  .rsn-row .name{font-size:15px;font-weight:700}
+  .rsn-row .name{font-size:15px;font-weight:500}
   .rsn-row .spacer{flex:1}
   .rsn-row .nums{text-align:right;line-height:1.3}
-  .rsn-row .n{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rsn-row .n{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
   .rsn-row .m{display:block;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 
   /* 割合の問いかけカード */
   .challenge{
     display:flex;align-items:center;gap:14px;
-    border-radius:16px;padding:18px;margin-bottom:14px;
+    border-radius:24px;padding:20px;margin-bottom:14px;
   }
   .challenge.red{background:var(--tag-red-bg)}
   .challenge.blue{background:var(--tag-blue-bg)}
-  .challenge .pct{font-size:34px;font-weight:700;line-height:1;letter-spacing:-0.02em;flex:none}
+  .challenge .pct{
+    font-family:var(--font-ui);font-size:34px;font-weight:500;
+    line-height:1;letter-spacing:-0.04em;flex:none;
+  }
   .challenge.red .pct{color:var(--tag-red-ink)}
   .challenge.blue .pct{color:var(--tag-blue-ink)}
   .challenge .msg{font-size:14px;line-height:1.65;font-weight:600;text-wrap:pretty;word-break:auto-phrase}
@@ -387,8 +445,11 @@
     font-size:14px;font-weight:600;color:var(--ink-3);padding:4px 0;margin-bottom:18px;
   }
   .back:hover{color:var(--accent)}
-  .sub-hero{font-size:48px;font-weight:700;line-height:1.05;letter-spacing:-0.02em}
-  .sub-hero .unit{font-size:18px;font-weight:600;color:var(--ink-2);margin-left:2px}
+  .sub-hero{
+    font-family:var(--font-ui);font-size:48px;font-weight:500;
+    line-height:1.05;letter-spacing:-0.03em;
+  }
+  .sub-hero .unit{font-size:18px;font-weight:500;color:var(--ink-2);margin-left:2px}
   .sub-lead{font-size:14px;color:var(--ink-2);margin-top:6px}
   .stat-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline-2);font-size:14px}
   .stat-row:last-child{border-bottom:none}
@@ -401,9 +462,9 @@
   .heat .ch b{font-size:12px;font-weight:700;color:var(--ink-2)}
   .heat .ch em{font-size:9px;font-style:normal;color:var(--ink-3);white-space:nowrap}
   .heat .cell{
-    aspect-ratio:1;border-radius:4px;background:var(--hairline-2);
+    aspect-ratio:1;border-radius:8px;background:var(--hairline-2);
     display:flex;align-items:center;justify-content:center;
-    font-size:11px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;
+    font-size:11px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums;
   }
   .heat .cell.zero{color:var(--ink-3);font-weight:400}
 
@@ -432,18 +493,18 @@
   .trend{display:flex;align-items:flex-end;gap:8px;height:96px;padding-top:8px}
   .trend .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
   .trend .bar{
-    width:100%;max-width:34px;border-radius:4px 4px 0 0;background:#9ec5f4;min-height:2px;
+    width:100%;max-width:34px;border-radius:8px 8px 0 0;background:#a8cdef;min-height:2px;
     border:none;padding:0;display:block;
     transition:background 160ms var(--ease-out);
   }
-  .trend .bar.today{background:var(--accent)}
+  .trend .bar.today{background:var(--accent-bright)}
   .trend .bar:hover,
   .trend .bar.picked{background:var(--accent-deep)}
   .trend .lbl{font-size:11px;color:var(--ink-3)}
-  .trend .col.picked .lbl{color:var(--ink);font-weight:700}
+  .trend .col.picked .lbl{color:var(--ink);font-weight:600}
   /* 押せることを説明文でなく手触りで伝える：列全体がタップ領域として反応する */
-  .trend .col{border-radius:6px;padding:4px 2px;cursor:pointer;transition:background 160ms var(--ease-out)}
-  .trend .col:hover{background:rgba(28,92,171,.08)}
+  .trend .col{border-radius:8px;padding:4px 2px;cursor:pointer;transition:background 160ms var(--ease-out)}
+  .trend .col:hover{background:rgba(22,104,184,.08)}
   /* 選択した日の分数はグラフの上に出す */
   .trend-readout{
     font-size:13px;color:var(--ink-3);margin-bottom:10px;min-height:1.6em;
@@ -453,14 +514,14 @@
   .trend-readout .min{color:var(--ink);font-weight:700;font-size:15px}
 
   .empty{
-    border:1px dashed var(--hairline);border-radius:12px;padding:28px 22px;
+    border:1px dashed var(--hairline);border-radius:20px;padding:28px 22px;
     color:var(--ink-2);font-size:14px;line-height:1.9;
   }
   /* ダッシュボードの空状態CTAだけが使う。介入フローの主ボタンは
      .rf-btn-primary に切り替えたので、この定義とは衝突しない */
   .btn-primary{
-    width:100%;padding:16px;border-radius:10px;
-    background:var(--accent);color:#fff;font-size:17px;font-weight:700;
+    width:100%;padding:16px;border-radius:100px;
+    background:var(--accent);color:#fff;font-size:17px;font-weight:500;
   }
   .btn-primary:active{opacity:.85}
   .empty .btn-primary{margin-top:16px}
@@ -471,42 +532,42 @@
   .app-row .val{color:var(--ink-2);font-variant-numeric:tabular-nums}
 
   /* ---- settings ---- */
-  .set-card{border:1px solid var(--hairline);border-radius:12px;padding:18px;margin-bottom:14px}
+  .set-card{border:1px solid var(--hairline);border-radius:20px;padding:20px;margin-bottom:14px}
   .set-card .name-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .set-card .name-line strong{font-size:15px}
+  .set-card .name-line strong{font-size:15px;font-weight:500}
   .del{font-size:12px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
   .field{margin-top:12px}
   .field label{display:block;font-size:12px;color:var(--ink-3);letter-spacing:.06em;margin-bottom:4px}
   input[type="text"],input[type="number"]{
     width:100%;padding:10px 12px;font:inherit;font-size:15px;
-    border:1px solid var(--hairline);border-radius:8px;background:var(--bg);color:var(--ink);
+    border:1px solid var(--hairline);border-radius:6px;background:var(--bg);color:var(--ink);
   }
   input[type="number"]{font-variant-numeric:tabular-nums}
   textarea{
     width:100%;padding:10px 12px;font:inherit;font-size:15px;line-height:1.7;
-    border:1px solid var(--hairline);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical;
+    border:1px solid var(--hairline);border-radius:6px;background:var(--bg);color:var(--ink);resize:vertical;
   }
   .copy-url{
-    margin-top:12px;width:100%;padding:11px;border:1px solid var(--accent);
-    color:var(--accent);border-radius:8px;font-size:14px;font-weight:600;background:var(--accent-soft);
+    margin-top:12px;width:100%;padding:11px;border:1.5px solid var(--accent);
+    color:var(--accent);border-radius:100px;font-size:14px;font-weight:500;background:var(--accent-soft);
   }
   .copy-url:active{opacity:.8}
   .add-btn{
-    width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:12px;
-    color:var(--ink-2);font-size:14px;font-weight:600;
+    width:100%;padding:12px;border:1px dashed var(--hairline);border-radius:20px;
+    color:var(--ink-2);font-size:14px;font-weight:500;
   }
   .minutes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .minutes-grid .cell label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  .minutes-grid .cell label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
   .conv-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
   .conv-row input[type="text"]{flex:1}
   .conv-row input[type="number"]{width:74px;flex:none}
   .conv-row .del{flex:none}
   .hint{font-size:12.5px;color:var(--ink-3);line-height:1.8;margin-top:10px}
-  .danger{color:#c03535;text-decoration:underline;text-underline-offset:2px;font-size:13px}
+  .danger{color:#b8300a;text-decoration:underline;text-underline-offset:2px;font-size:13px}
 
-  details.setup{border:1px solid var(--hairline);border-radius:12px;padding:0 18px}
+  details.setup{border:1px solid var(--hairline);border-radius:20px;padding:0 18px}
   details.setup summary{
-    padding:16px 0;font-size:14px;font-weight:700;cursor:pointer;list-style:none;
+    padding:16px 0;font-size:14px;font-weight:500;cursor:pointer;list-style:none;
     display:flex;justify-content:space-between;align-items:center;
   }
   details.setup summary::after{content:"＋";color:var(--ink-3);font-weight:400}
@@ -517,7 +578,7 @@
   .toast{
     position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));
     transform:translate(-50%, 8px) scale(0.97);
-    background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+    background:var(--ink);color:#fff;font-size:13px;font-weight:500;
     padding:9px 18px;border-radius:99px;opacity:0;pointer-events:none;
     white-space:nowrap;
     /* 退場は入場より速く */
@@ -530,13 +591,13 @@
 
   /* ---- action sheet（全消去の確認モーダル） ---- */
   .scrim{
-    position:fixed;inset:0;z-index:20;background:rgba(23,23,26,.4);
+    position:fixed;inset:0;z-index:20;background:rgba(14,14,15,.4);
     opacity:0;transition:opacity 200ms var(--ease-out);
   }
   .sheet{
     position:fixed;left:0;right:0;bottom:0;z-index:21;
     max-width:520px;margin:0 auto;
-    background:var(--bg);border-radius:16px 16px 0 0;
+    background:var(--bg);border-radius:28px 28px 0 0;
     padding:24px 24px calc(20px + env(safe-area-inset-bottom));
     transform:translateY(100%);
     transition:transform 320ms var(--ease-drawer);
@@ -545,15 +606,15 @@
   .sheet-open .sheet{transform:translateY(0)}
   .sheet-closing .scrim{opacity:0;transition-duration:200ms}
   .sheet-closing .sheet{transform:translateY(100%);transition-duration:240ms}
-  .sheet h3{font-size:17px;font-weight:700;margin-bottom:6px}
+  .sheet h3{font-size:17px;font-weight:500;margin-bottom:6px}
   .sheet p{font-size:14px;color:var(--ink-2);margin-bottom:20px}
   .sheet .btn-destructive{
-    width:100%;padding:15px;border-radius:10px;
-    background:#c03535;color:#fff;font-size:16px;font-weight:700;
+    width:100%;padding:15px;border-radius:100px;
+    background:#b8300a;color:#fff;font-size:16px;font-weight:500;
   }
   .sheet .btn-cancel{
     width:100%;padding:13px;margin-top:8px;
-    font-size:15px;font-weight:600;color:var(--ink-2);
+    font-size:15px;font-weight:500;color:var(--ink-2);
   }
 
   /* reduced motion = ゼロではなく「揺れない」。opacityは残しtransformの移動を消す */
@@ -1116,6 +1177,89 @@ function chrome(active, inner){
   });
 }
 
+/* ================= おじさんマスコット =================
+   今日の開いた回数/引き返した回数だけで機嫌を決める。
+   引き返した方が多い（互角も含む）→踊る、まだ何も起きていない→立つ、
+   3回以上開いたのに1度も引き返せていない→寝る */
+function ojisanMood(opens, resists){
+  if(opens === 0 && resists === 0) return "stand";
+  if(resists > 0 && resists >= opens) return "dance";
+  if(resists === 0 && opens >= 3) return "lying";
+  return "stand";
+}
+/* standは「まだ何もない日」と「開いたのと引き返したのが拮抗してる日」の
+   両方で出る。「今日はこれから」のような書き方だと後者と噛み合わないので、
+   どちらでも成立する言い方にする */
+const OJI_CAPTION = { dance:"絶好調。", stand:"がんばろう。", lying:"今日は完敗。" };
+
+/* 3ポーズぶんの座標をそれぞれ直接持たせている。1体をCSSで無理に
+   使い回すと関節の位置がポーズごとに破綻するため */
+function ojisanSvg(mood){
+  if(mood === "dance"){
+    return `
+    <svg class="oji mood-dance" viewBox="0 0 140 150" aria-hidden="true">
+      <g class="oj-sparkle s1"><path d="M18 40 L21 46 L27 49 L21 52 L18 58 L15 52 L9 49 L15 46 Z" fill="var(--r-hima)"/></g>
+      <g class="oj-sparkle s2"><circle cx="122" cy="55" r="3" fill="#ff764c"/></g>
+      <g class="oj-sparkle s3"><path d="M112 95 L114 99 L118 101 L114 103 L112 107 L110 103 L106 101 L110 99 Z" fill="var(--r-hima)"/></g>
+      <g class="oj-sparkle s4"><circle cx="24" cy="100" r="2.4" fill="#ff764c"/></g>
+      <g class="oj-rig">
+        <ellipse cx="70" cy="141" rx="24" ry="5" fill="#0e0e0f" opacity=".07"/>
+        <g transform="rotate(-10 62.5 100)"><rect x="56" y="98" width="13" height="34" rx="6" fill="#0e0e0f"/><ellipse cx="62.5" cy="132" rx="9" ry="5" fill="#0e0e0f"/></g>
+        <g transform="rotate(38 77.5 96)"><rect x="71" y="94" width="13" height="32" rx="6" fill="#0e0e0f"/><ellipse cx="77.5" cy="126" rx="8.5" ry="5" fill="#0e0e0f"/></g>
+        <g transform="rotate(-32 49 60)"><rect x="43" y="24" width="11" height="36" rx="5.5" fill="#ffb199"/></g>
+        <g transform="rotate(32 91 60)"><rect x="86" y="24" width="11" height="36" rx="5.5" fill="#ffb199"/></g>
+        <rect x="50" y="52" width="40" height="46" rx="16" fill="#2492ff"/>
+        <circle cx="70" cy="34" r="18" fill="#ffb199"/>
+        <path d="M55 21 Q70 10 85 21" stroke="#0e0e0f" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <circle cx="57" cy="39" r="3" fill="#ff764c" opacity=".55"/>
+        <circle cx="83" cy="39" r="3" fill="#ff764c" opacity=".55"/>
+        <path d="M59 33 Q63 28 67 33" stroke="#0e0e0f" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+        <path d="M73 33 Q77 28 81 33" stroke="#0e0e0f" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+        <path d="M58 40 Q70 45 82 40 Q70 41.5 58 40 Z" fill="#0e0e0f"/>
+      </g>
+    </svg>`;
+  }
+  if(mood === "lying"){
+    return `
+    <svg class="oji mood-lying" viewBox="0 0 190 110" aria-hidden="true">
+      <g class="oj-zzz"><text x="146" y="26" font-size="16" font-weight="700" fill="var(--ink-3)">z z z</text></g>
+      <g class="oj-rig">
+        <ellipse cx="95" cy="96" rx="78" ry="6" fill="#0e0e0f" opacity=".07"/>
+        <rect x="96" y="58" width="46" height="13" rx="6.5" fill="#0e0e0f"/>
+        <ellipse cx="142" cy="64.5" rx="6.5" ry="8" fill="#0e0e0f"/>
+        <rect x="94" y="74" width="50" height="13" rx="6.5" fill="#0e0e0f"/>
+        <ellipse cx="144" cy="80.5" rx="6.5" ry="8" fill="#0e0e0f"/>
+        <rect x="58" y="46" width="34" height="11" rx="5.5" fill="#ffb199"/>
+        <ellipse cx="92" cy="51.5" rx="6.5" ry="6" fill="#ffb199"/>
+        <rect x="50" y="52" width="48" height="34" rx="15" fill="#2492ff"/>
+        <circle cx="36" cy="66" r="18" fill="#ffb199"/>
+        <path d="M24 53 Q36 44 48 53" stroke="#0e0e0f" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <path d="M26 64 L32 70 M32 64 L26 70" stroke="#0e0e0f" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M40 64 L46 70 M46 64 L40 70" stroke="#0e0e0f" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M27 76 Q36 79 45 76" stroke="#0e0e0f" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>`;
+  }
+  return `
+    <svg class="oji mood-stand" viewBox="0 0 140 150" aria-hidden="true">
+      <g class="oj-rig">
+        <ellipse cx="70" cy="141" rx="28" ry="6" fill="#0e0e0f" opacity=".08"/>
+        <rect x="54" y="96" width="13" height="38" rx="6" fill="#0e0e0f"/>
+        <rect x="73" y="96" width="13" height="38" rx="6" fill="#0e0e0f"/>
+        <ellipse cx="60.5" cy="134" rx="9" ry="5" fill="#0e0e0f"/>
+        <ellipse cx="79.5" cy="134" rx="9" ry="5" fill="#0e0e0f"/>
+        <rect x="40" y="58" width="11" height="38" rx="5.5" fill="#ffb199"/>
+        <rect x="89" y="58" width="11" height="38" rx="5.5" fill="#ffb199"/>
+        <rect x="50" y="52" width="40" height="46" rx="16" fill="#2492ff"/>
+        <circle cx="70" cy="34" r="18" fill="#ffb199"/>
+        <path d="M55 21 Q70 10 85 21" stroke="#0e0e0f" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <circle cx="63" cy="34" r="1.9" fill="#0e0e0f"/>
+        <circle cx="77" cy="34" r="1.9" fill="#0e0e0f"/>
+        <path d="M58 41 Q70 47 82 41 Q70 43.5 58 41 Z" fill="#0e0e0f"/>
+      </g>
+    </svg>`;
+}
+
 function renderDashboard(){
   const evs = eventsOn(todayKey());
   if(events.length === 0){ return renderEmpty(); }
@@ -1185,7 +1329,16 @@ function renderDashboard(){
   const [,tm,tdd] = td.key.split("-");
   const initReadout = `<span class="day">${Number(tm)}/${Number(tdd)}（${td.wd}）</span> <span class="min">${td.min}分</span>`;
 
+  const ojiMood = ojisanMood(opens, resists);
+
   chrome("today", `
+    <section class="bare">
+      <div class="oji-wrap">
+        <div class="oji-stage">${ojisanSvg(ojiMood)}</div>
+        <p class="oji-caption">${OJI_CAPTION[ojiMood]}</p>
+      </div>
+    </section>
+
     <section>
       <div class="counts">
         <button class="count-block" id="to-heat">
@@ -1223,7 +1376,7 @@ function renderDashboard(){
           <span class="tag ${b.group === "無意識" ? "mui" : "moku"}">${b.group}</span>
           <span class="spacer"></span>
           <span class="nums">
-            <span class="n" style="color:${b.color}">${b.n}回</span>
+            <span class="n">${b.n}回</span>
             <span class="m">推定${b.min}分</span>
           </span>
         </div>`).join("")}
